@@ -90,15 +90,10 @@ pub trait Allocator {
     unsafe fn deallocate_raw_aligned(&self, p: *mut (), n: usize, align: usize);
 }
 
+#[derive(Default)]
 pub struct DefaultAllocator {
     // padding due to 1-size struct in C
     _dummy: usize,
-}
-
-impl Default for DefaultAllocator {
-    fn default() -> Self {
-        Self { _dummy: 0 }
-    }
 }
 
 impl Allocator for DefaultAllocator {

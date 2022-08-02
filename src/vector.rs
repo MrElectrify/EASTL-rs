@@ -1,4 +1,6 @@
 use std::{
+    cmp::min,
+    fmt::Debug,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
@@ -9,7 +11,7 @@ use crate::allocator::{Allocator, DefaultAllocator};
 /// The EASTL implementation consists of begin, end, and capacity pointers,
 /// as well as a following allocator
 #[repr(C)]
-pub struct Vector<T, A: Allocator = DefaultAllocator> {
+pub struct Vector<T: Sized, A: Allocator = DefaultAllocator> {
     /// We've chosen `*mut T` over `NonNull<T>` at the expense of
     /// covariance because EASTL would try to de-allocate a non-null
     /// `begin`, even if it is size zero
@@ -20,7 +22,7 @@ pub struct Vector<T, A: Allocator = DefaultAllocator> {
     _holds_data: PhantomData<T>,
 }
 
-impl<T> Vector<T, DefaultAllocator> {
+impl<T: Sized> Vector<T, DefaultAllocator> {
     /// Creates a new vector
     pub fn new() -> Self {
         Self {
@@ -31,15 +33,26 @@ impl<T> Vector<T, DefaultAllocator> {
             _holds_data: PhantomData::default(),
         }
     }
+
+    /// Creates a new vector with a capacity allocated
+    ///
+    /// # Arguments
+    ///
+    /// `capacity`: The initial capacity of the vector
+    pub fn with_capacity(capacity: usize) -> Self {
+        let mut v = Vector::new();
+        v.reserve(capacity);
+        v
+    }
 }
 
-impl<T, A: Allocator> Vector<T, A> {
+impl<T: Sized, A: Allocator> Vector<T, A> {
     /// Creates a vector with a custom allocator
     ///
     /// # Arguments
     ///
     /// `allocator`: The allocator used to allocate and de-allocate elements
-    pub fn with_allocator(allocator: A) -> Self {
+    pub fn new_in(allocator: A) -> Self {
         Self {
             begin_ptr: std::ptr::null_mut(),
             end_ptr: std::ptr::null_mut(),
@@ -49,24 +62,43 @@ impl<T, A: Allocator> Vector<T, A> {
         }
     }
 
+    /// Assigns a vector to a slice
+    pub fn assign(&mut self, buf: &[T]) {
+        self.reserve(buf.len());
+        unsafe {
+            self.begin_ptr.copy_from(buf.as_ptr(), buf.len());
+            self.end_ptr = self.begin_ptr.add(buf.len());
+        }
+    }
+
+    /// Returns the vector as raw bytes
+    pub fn as_bytes(&self) -> &[T] {
+        unsafe { std::slice::from_raw_parts(self.begin_ptr, self.size()) }
+    }
+
     /// Returns the capacity of the vector
     pub fn capacity(&self) -> usize {
         (unsafe { self.capacity_ptr.offset_from(self.begin_ptr) }) as usize
     }
 
     /// Returns true if the vector is empty
-    pub fn empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.size() == 0
     }
 
     /// Returns true if the array is full to the capacity
-    pub fn full(&self) -> bool {
+    pub fn is_full(&self) -> bool {
         self.size() == self.capacity()
     }
 
     /// Returns the size of the vector
     pub fn size(&self) -> usize {
         (unsafe { self.end_ptr.offset_from(self.begin_ptr) }) as usize
+    }
+
+    /// Returns the length of the vector
+    pub fn len(&self) -> usize {
+        self.size()
     }
 
     /// Pushes a new element into the vector
@@ -76,7 +108,7 @@ impl<T, A: Allocator> Vector<T, A> {
     /// `elem`: The new element
     pub fn push(&mut self, elem: T) {
         // see if we should expand
-        if self.full() {
+        if self.is_full() {
             self.grow();
         }
         // add the new element and increment size
@@ -89,7 +121,7 @@ impl<T, A: Allocator> Vector<T, A> {
     /// Pops an element off of the back of the array
     pub fn pop(&mut self) -> Option<T> {
         // see if we have any elements to pop
-        if self.empty() {
+        if self.is_empty() {
             None
         } else {
             unsafe {
@@ -110,7 +142,7 @@ impl<T, A: Allocator> Vector<T, A> {
     pub fn insert(&mut self, index: usize, elem: T) {
         assert!(index <= self.size(), "index out of bounds");
         // see if we need to expand the array
-        if self.full() {
+        if self.is_full() {
             self.grow();
         }
         // shift all elements to the right
@@ -146,6 +178,28 @@ impl<T, A: Allocator> Vector<T, A> {
         }
     }
 
+    /// Reserves space for elements within the vector
+    ///
+    /// # Arguments
+    ///
+    /// `capacity`: The new capacity of the vector
+    pub fn reserve(&mut self, capacity: usize) {
+        // allocate a new bit of memory
+        let size = self.size();
+        // allocate the new buffer
+        let new_begin_ptr = unsafe { self.allocator.allocate::<T>(capacity) };
+        // copy from the old array if we should
+        if size > 0 {
+            unsafe {
+                new_begin_ptr.copy_from(self.begin_ptr, min(size, capacity));
+            }
+        }
+        // calculate and store new pointers
+        self.begin_ptr = new_begin_ptr;
+        self.end_ptr = unsafe { new_begin_ptr.add(size) };
+        self.capacity_ptr = unsafe { new_begin_ptr.add(capacity) }
+    }
+
     /// Incremement the array size
     unsafe fn decrement_size(&mut self) {
         self.end_ptr = self.end_ptr.sub(1);
@@ -172,38 +226,20 @@ impl<T, A: Allocator> Vector<T, A> {
     /// Grows the array to fit additional elements
     fn grow(&mut self) {
         // allocate a new bit of memory
-        let old_capacity = self.capacity();
-        let size = self.size();
-        let new_capacity = Self::calculate_grow_capacity(old_capacity);
-        // allocate the new buffer
-        let new_begin_ptr = unsafe { self.allocator.allocate::<T>(new_capacity) };
-        // copy from the old array
-        unsafe {
-            new_begin_ptr.copy_from(self.begin_ptr, size);
-        }
-        // calculate and store new pointers
-        self.begin_ptr = new_begin_ptr;
-        self.end_ptr = unsafe { new_begin_ptr.add(size) };
-        self.capacity_ptr = unsafe { new_begin_ptr.add(new_capacity) }
+        let new_capacity = Self::calculate_grow_capacity(self.capacity());
+        self.reserve(new_capacity);
     }
 }
 
-impl<T> Default for Vector<T, DefaultAllocator> {
-    fn default() -> Self {
-        Vector::new()
+impl<T, A: Allocator> AsRef<[T]> for Vector<T, A> {
+    fn as_ref(&self) -> &[T] {
+        &*self
     }
 }
 
-impl<T, A: Allocator> Deref for Vector<T, A> {
-    type Target = [T];
-    fn deref(&self) -> &Self::Target {
-        unsafe { std::slice::from_raw_parts(self.begin_ptr, self.size()) }
-    }
-}
-
-impl<T, A: Allocator> DerefMut for Vector<T, A> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { std::slice::from_raw_parts_mut(self.begin_ptr, self.size()) }
+impl<T: Debug, A: Allocator> Debug for Vector<T, A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{:?}", &self.as_ref()))
     }
 }
 
@@ -218,6 +254,77 @@ where
             // free the array
             unsafe { self.allocator.deallocate::<T>(self.begin_ptr, self.size()) }
         }
+    }
+}
+
+impl<T> Default for Vector<T, DefaultAllocator> {
+    fn default() -> Self {
+        Vector::new()
+    }
+}
+
+impl<T, A: Allocator> Deref for Vector<T, A> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        self.as_bytes()
+    }
+}
+
+impl<T, A: Allocator> DerefMut for Vector<T, A> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { std::slice::from_raw_parts_mut(self.begin_ptr, self.size()) }
+    }
+}
+
+impl<T: Sized> From<&[T]> for Vector<T, DefaultAllocator> {
+    fn from(buf: &[T]) -> Self {
+        let mut v = Vector::new();
+        v.assign(buf);
+        v
+    }
+}
+
+impl<T: Sized> From<&mut [T]> for Vector<T, DefaultAllocator> {
+    fn from(buf: &mut [T]) -> Self {
+        let mut v = Vector::new();
+        v.assign(buf);
+        v
+    }
+}
+
+impl<T: Sized, const N: usize> From<[T; N]> for Vector<T, DefaultAllocator> {
+    fn from(buf: [T; N]) -> Self {
+        let mut v = Vector::new();
+        v.assign(&buf);
+        v
+    }
+}
+
+impl<T: Sized, const N: usize> From<&[T; N]> for Vector<T, DefaultAllocator> {
+    fn from(buf: &[T; N]) -> Self {
+        let mut v = Vector::new();
+        v.assign(buf);
+        v
+    }
+}
+
+impl From<&str> for Vector<u8, DefaultAllocator> {
+    fn from(str: &str) -> Self {
+        let mut v = Vector::new();
+        v.assign(str.as_bytes());
+        v
+    }
+}
+
+impl<T> FromIterator<T> for Vector<T, DefaultAllocator> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let iter = iter.into_iter();
+        let (lower_bound, _) = iter.size_hint();
+        let mut v = Vector::with_capacity(lower_bound);
+        for elem in iter {
+            v.push(elem);
+        }
+        v
     }
 }
 
@@ -259,7 +366,7 @@ mod test {
         assert!(v.capacity_ptr.is_null());
         assert_eq!(v.capacity(), 0);
         assert_eq!(v.size(), 0);
-        assert!(v.empty());
+        assert!(v.is_empty());
     }
 
     #[test]
@@ -268,14 +375,14 @@ mod test {
         v.push(20);
         assert_eq!(v.capacity(), 1);
         assert_eq!(v.size(), 1);
-        assert!(!v.empty());
+        assert!(!v.is_empty());
         let arr = &*v;
         assert_eq!(arr.len(), 1);
         assert_eq!(arr[0], 20);
         assert_eq!(v.pop(), Some(20));
         assert_eq!(v.capacity(), 1);
         assert_eq!(v.size(), 0);
-        assert!(v.empty());
+        assert!(v.is_empty());
     }
 
     #[test]
@@ -285,7 +392,7 @@ mod test {
         v.push(25);
         assert_eq!(v.capacity(), 2);
         assert_eq!(v.size(), 2);
-        assert!(!v.empty());
+        assert!(!v.is_empty());
         let arr = &mut *v;
         assert_eq!(arr.len(), 2);
         assert_eq!(arr[0], 20);
@@ -295,7 +402,7 @@ mod test {
         assert_eq!(v.pop(), Some(20));
         assert_eq!(v.capacity(), 2);
         assert_eq!(v.size(), 0);
-        assert!(v.empty());
+        assert!(v.is_empty());
     }
 
     #[test]
@@ -306,7 +413,7 @@ mod test {
         v.push(30);
         assert_eq!(v.capacity(), 4);
         assert_eq!(v.size(), 3);
-        assert!(!v.empty());
+        assert!(!v.is_empty());
         assert_eq!(v.pop(), Some(30));
         assert_eq!(v.size(), 2);
         assert_eq!(v.pop(), Some(25));
@@ -314,7 +421,7 @@ mod test {
         assert_eq!(v.pop(), Some(20));
         assert_eq!(v.capacity(), 4);
         assert_eq!(v.size(), 0);
-        assert!(v.empty());
+        assert!(v.is_empty());
     }
 
     #[test]
@@ -347,5 +454,21 @@ mod test {
         v.push(2);
         v.push(3);
         assert_eq!(v.iter().sum::<i32>(), 6);
+    }
+
+    #[test]
+    fn from() {
+        let v = Vector::from(&[1, 2, 3]);
+        assert_eq!(v.capacity(), 3);
+        assert_eq!(v.size(), 3);
+        assert_eq!(&*v, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn from_iter() {
+        let v = (1..4).collect::<Vector<_>>();
+        assert_eq!(v.capacity(), 3);
+        assert_eq!(v.size(), 3);
+        assert_eq!(&*v, &[1, 2, 3]);
     }
 }
