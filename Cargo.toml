@@ -4,5 +4,8 @@ description = "EASTL binary-compatible Rust implementations"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+superslice = "1.0"
+
 [dev-dependencies]
 memoffset = "0.6.5"

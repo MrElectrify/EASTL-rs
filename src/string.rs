@@ -5,6 +5,7 @@ use std::{
 
 use crate::{
     allocator::{Allocator, DefaultAllocator},
+    hash::{DefaultHash, Hash},
     vector::Vector,
 };
 
@@ -74,14 +75,9 @@ impl<A: Allocator> String<A> {
         self.vec.is_full()
     }
 
-    /// Returns the size of the string
-    pub fn size(&self) -> usize {
-        self.vec.size()
-    }
-
     /// Returns the length of the string
     pub fn len(&self) -> usize {
-        self.size()
+        self.vec.len()
     }
 
     /// Pushes a new element into the string
@@ -131,7 +127,7 @@ impl<A: Allocator> String<A> {
 
 impl<A: Allocator> AsRef<[u8]> for String<A> {
     fn as_ref(&self) -> &[u8] {
-        self.vec.as_bytes()
+        self.vec.as_slice()
     }
 }
 
@@ -178,6 +174,12 @@ impl From<&str> for String<DefaultAllocator> {
         Self {
             vec: Vector::from(buf),
         }
+    }
+}
+
+impl Hash<String> for DefaultHash<String> {
+    fn hash(val: &String) -> usize {
+        DefaultHash::hash(val.as_str())
     }
 }
 
