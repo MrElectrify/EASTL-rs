@@ -1,7 +1,7 @@
 /// A node in a hashtable
 pub struct Node<K: Eq, V> {
-    key: K,
-    val: V,
+    pub key: K,
+    pub val: V,
     pub next: *mut Self,
 }
 

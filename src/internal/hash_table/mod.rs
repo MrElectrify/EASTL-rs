@@ -47,7 +47,13 @@ where
 }
 
 impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
-    /// Checks if the hashtable contains an element with the given key
+    /// Clears the hash table, removing all key-value pairs
+    pub fn clear(&mut self) {
+        self.free_buckets();
+        self.element_count = 0;
+    }
+
+    /// Checks if the hash table contains the given key
     ///
     /// # Arguments
     ///
@@ -76,7 +82,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
         Self::find_in_bucket_mut(bucket, key).map(|node| node.value_mut())
     }
 
-    /// Inserts the key-value pair into the hashtable
+    /// Inserts the key-value pair into the hash table
     ///
     /// # Arguments
     ///
@@ -118,9 +124,57 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
         self.len() == 0
     }
 
-    /// Returns the length of the hashtable
+    /// Returns the number of elements in the hash table
     pub fn len(&self) -> usize {
         self.element_count as usize
+    }
+
+    /// Removes a key-value pair from the hash table,
+    /// returning the element if it was found
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        self.remove_entry(key).map(|(_, val)| val)
+    }
+
+    /// Removes a key-value pair from the hash table,
+    /// returning the pair if it was found
+    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
+        // we need to trail behind by one so we can
+        // update the correct pointer
+        let mut bucket = self.bucket_for_key_mut(key);
+        unsafe {
+            while !(*bucket).is_null() && !(**bucket).matches(key) {
+                bucket = &mut (**bucket).next;
+            }
+            if (*bucket).is_null() {
+                None
+            } else {
+                let node = *bucket;
+                (*bucket) = (**bucket).next;
+                let key = std::ptr::read(&(*node).key);
+                let value = std::ptr::read(&(*node).val);
+                // notice we don't drop the key or value here.
+                // we don't want to drop them now and still have
+                // binary copies of them existing
+                self.allocator.deallocate(node, 1);
+                self.element_count -= 1;
+                Some((key, value))
+            }
+        }
+    }
+
+    /// Creates a hash table backed by an allocator
+    pub fn with_allocator(allocator: A) -> Self {
+        Self {
+            pad: 0,
+            bucket_array: unsafe { std::mem::transmute(EMPTY_BUCKET_ARR.as_ptr()) },
+            bucket_count: 1,
+            element_count: 0,
+            rehash_policy: PrimeRehashPolicy::default(),
+            allocator,
+            _phantom_key: PhantomData::default(),
+            _phantom_value: PhantomData::default(),
+            _phantom_hash: PhantomData::default(),
+        }
     }
 
     /// Fetches the bucket for a given key
@@ -233,6 +287,8 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
             for bucket in buckets.iter().filter_map(|elem| unsafe { elem.as_mut() }) {
                 self.free_bucket(bucket)
             }
+            // zero the pointers
+            buckets.fill_with(std::ptr::null_mut)
         }
     }
 
@@ -285,6 +341,19 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> Drop for HashTable<K, V, H, A> {
     }
 }
 
+impl<K: Eq, V> FromIterator<(K, V)> for HashTable<K, V, DefaultHash<K>, DefaultAllocator>
+where
+    DefaultHash<K>: Hash<K>,
+{
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        let mut ht = Self::default();
+        iter.into_iter().for_each(|(k, v)| {
+            ht.insert(k, v);
+        });
+        ht
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::hash::{DefaultHash, Hash};
@@ -303,6 +372,7 @@ mod test {
     fn default() {
         let ht: HashTable<u32, u32> = HashTable::default();
         assert!(ht.get(&5).is_none());
+        assert!(ht.is_empty());
     }
 
     #[test]
@@ -311,13 +381,43 @@ mod test {
         ht.insert(5, 6);
         ht.insert(6, 7);
         ht.insert(4, 7);
+        assert!(!ht.is_empty());
+        assert_eq!(ht.len(), 3);
         assert_eq!(ht.get(&5), Some((&5, &6)));
         assert_eq!(ht.get(&6), Some((&6, &7)));
         assert_eq!(ht.get(&7), None);
     }
 
-    #[derive(PartialEq)]
+    #[test]
+    fn remove() {
+        let mut ht = HashTable::new();
+        ht.insert(6, 7);
+        assert_eq!(ht.remove(&6), Some(7));
+        assert!(ht.is_empty());
+        assert_eq!(ht.get(&6), None);
+    }
+
+    #[test]
+    fn clear() {
+        let mut ht = HashTable::new();
+        ht.insert(1, 2);
+        ht.insert(2, 3);
+        ht.insert(3, 4);
+        ht.clear();
+        assert!(ht.is_empty());
+    }
+
+    #[test]
+    fn from_iter() {
+        let mut ht: HashTable<u32, u32> = [(1, 2), (2, 3), (3, 4)].into_iter().collect();
+        assert_eq!(ht.len(), 3);
+        assert_eq!(ht.get(&2), Some((&2, &3)));
+        ht.get_mut(&3).map(|v| *v = 5);
+        assert_eq!(ht.get(&3), Some((&3, &5)));
+    }
+
     struct Test<'a> {
+        a: u32,
         r: &'a mut u32,
     }
 
@@ -327,6 +427,14 @@ mod test {
         }
     }
 
+    impl<'a> PartialEq for Test<'a> {
+        fn eq(&self, other: &Self) -> bool {
+            self.a == other.a
+        }
+        fn ne(&self, other: &Self) -> bool {
+            self.a != other.a
+        }
+    }
     impl<'a> Eq for Test<'a> {}
 
     impl<'a> Hash<Test<'a>> for DefaultHash<Test<'a>> {
@@ -340,13 +448,16 @@ mod test {
         let mut foo = 1;
         let mut bar = 1;
         let mut baz = 1;
+        let mut bag = 1;
         {
             let mut ht = HashTable::new();
-            ht.insert(Test { r: &mut foo }, None);
-            ht.insert(Test { r: &mut bar }, Some(Test { r: &mut baz }));
+            ht.insert(Test { a: 1, r: &mut foo }, None);
+            ht.insert(Test { a: 2, r: &mut bar }, Some(Test { a: 3, r: &mut baz }));
+            ht.remove(&Test { a: 2, r: &mut bag });
         }
         assert_eq!(foo, 2);
         assert_eq!(bar, 2);
         assert_eq!(baz, 2);
+        assert_eq!(bag, 2);
     }
 }

@@ -23,6 +23,11 @@ where
 }
 
 impl<K: Eq, H: Hash<K>, A: Allocator> HashSet<K, H, A> {
+    /// Clears the hash set, removing all keys
+    pub fn clear(&mut self) {
+        self.hashtable.clear()
+    }
+
     /// Checks if the hashset contains the given key
     ///
     /// # Arguments
@@ -57,9 +62,21 @@ impl<K: Eq, H: Hash<K>, A: Allocator> HashSet<K, H, A> {
         self.hashtable.is_empty()
     }
 
-    /// Returns the length of the hashtable
+    /// Returns the number of elements in the hash set
     pub fn len(&self) -> usize {
         self.hashtable.len()
+    }
+
+    /// Removes a key from the hash set, returning it if it was found
+    pub fn remove(&mut self, key: &K) -> Option<K> {
+        self.hashtable.remove_entry(key).map(|(key, _)| key)
+    }
+
+    /// Creates a hash set backed by an allocator
+    pub fn with_allocator(allocator: A) -> Self {
+        Self {
+            hashtable: HashTable::with_allocator(allocator),
+        }
     }
 }
 
@@ -69,5 +86,16 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<K: Eq> FromIterator<K> for HashSet<K, DefaultHash<K>, DefaultAllocator>
+where
+    DefaultHash<K>: Hash<K>,
+{
+    fn from_iter<T: IntoIterator<Item = K>>(iter: T) -> Self {
+        Self {
+            hashtable: HashTable::from_iter(iter.into_iter().map(|k| (k, ()))),
+        }
     }
 }

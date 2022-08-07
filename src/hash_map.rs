@@ -14,7 +14,7 @@ impl<K: Eq, V> HashMap<K, V, DefaultHash<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
-    /// Creates a new empty hashmap
+    /// Creates a new empty hash map
     pub fn new() -> Self {
         Self {
             hashtable: HashTable::new(),
@@ -23,7 +23,12 @@ where
 }
 
 impl<K: Eq, V, H: Hash<K>, A: Allocator> HashMap<K, V, H, A> {
-    /// Checks if the hashmap contains the given key
+    /// Clears the hash map, removing all key-value pairs
+    pub fn clear(&mut self) {
+        self.hashtable.clear()
+    }
+
+    /// Checks if the hash map contains the given key
     ///
     /// # Arguments
     ///
@@ -50,7 +55,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashMap<K, V, H, A> {
         self.hashtable.get_mut(key)
     }
 
-    /// Inserts the key-value pair into the hashtable
+    /// Inserts the key-value pair into the hash map
     ///
     /// # Arguments
     ///
@@ -61,14 +66,33 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashMap<K, V, H, A> {
         self.hashtable.insert(key, value)
     }
 
-    /// Returns true if the hash table is empty
+    /// Returns true if the hash map is empty
     pub fn is_empty(&self) -> bool {
         self.hashtable.is_empty()
     }
 
-    /// Returns the length of the hashtable
+    /// Returns the number of key-value pairs in the hash map
     pub fn len(&self) -> usize {
         self.hashtable.len()
+    }
+
+    /// Removes a key-value pair from the hash map,
+    /// returning the element if it was found
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        self.hashtable.remove(key)
+    }
+
+    /// Removes a key-value pair from the hash map,
+    /// returning the pair if it was found
+    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
+        self.hashtable.remove_entry(key)
+    }
+
+    /// Creates a hash map backed by an allocator
+    pub fn with_allocator(allocator: A) -> Self {
+        Self {
+            hashtable: HashTable::with_allocator(allocator),
+        }
     }
 }
 
@@ -78,5 +102,16 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<K: Eq, V> FromIterator<(K, V)> for HashMap<K, V, DefaultHash<K>, DefaultAllocator>
+where
+    DefaultHash<K>: Hash<K>,
+{
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        Self {
+            hashtable: HashTable::from_iter(iter),
+        }
     }
 }
