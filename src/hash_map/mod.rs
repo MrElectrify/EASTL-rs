@@ -133,6 +133,9 @@ where
     }
 }
 
+unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, A: Allocator + Send> Send for HashMap<K, V, H, A> {}
+unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, A: Allocator + Sync> Sync for HashMap<K, V, H, A> {}
+
 #[cfg(test)]
 mod test {
     use std::collections::BTreeMap;

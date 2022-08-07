@@ -378,6 +378,9 @@ where
     }
 }
 
+unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, A: Allocator + Send> Send for HashTable<K, V, H, A> {}
+unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, A: Allocator + Sync> Sync for HashTable<K, V, H, A> {}
+
 #[cfg(test)]
 mod test {
     use crate::hash::{DefaultHash, Hash};

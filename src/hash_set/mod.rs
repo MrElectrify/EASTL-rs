@@ -109,6 +109,9 @@ where
     }
 }
 
+unsafe impl<K: Eq + Send, H: Hash<K>, A: Allocator + Send> Send for HashSet<K, H, A> {}
+unsafe impl<K: Eq + Sync, H: Hash<K>, A: Allocator + Sync> Sync for HashSet<K, H, A> {}
+
 #[cfg(test)]
 mod test {
     use std::collections::BTreeSet;
