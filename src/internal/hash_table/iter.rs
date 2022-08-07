@@ -177,4 +177,45 @@ mod test {
         assert!(iter.next().is_none());
         assert!(cloned.next().is_none())
     }
+
+    #[test]
+    fn compat_sanity() {
+        let ht = (0..10)
+            .into_iter()
+            .map(|n| n * 10)
+            .map(|n| (n, n))
+            .collect::<HashTable<u32, u32>>();
+        let iter = RawIter::new(unsafe {
+            std::slice::from_raw_parts(ht.bucket_array, ht.bucket_count as usize)
+        });
+        let (begin, end) = iter.into_compat();
+        let mut iter = unsafe { RawIter::from_compat(begin, end) };
+        for _ in 0..10 {
+            assert!(iter.next().is_some());
+        }
+        // should be empty now
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn compat_partial_use_sanity() {
+        let ht = (0..10)
+            .into_iter()
+            .map(|n| n * 10)
+            .map(|n| (n, n))
+            .collect::<HashTable<u32, u32>>();
+        let mut iter = RawIter::new(unsafe {
+            std::slice::from_raw_parts(ht.bucket_array, ht.bucket_count as usize)
+        });
+        for _ in 0..5 {
+            assert!(iter.next().is_some());
+        }
+        let (begin, end) = iter.into_compat();
+        let mut iter = unsafe { RawIter::from_compat(begin, end) };
+        for _ in 0..5 {
+            assert!(iter.next().is_some());
+        }
+        // should be empty now
+        assert!(iter.next().is_none());
+    }
 }
