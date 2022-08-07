@@ -1,4 +1,5 @@
 /// A node in a hashtable
+#[repr(C)]
 pub struct Node<K: Eq, V> {
     pub key: K,
     pub val: V,

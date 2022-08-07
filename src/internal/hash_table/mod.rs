@@ -7,6 +7,7 @@ use crate::{
 
 use self::{node::Node, rehash_policy::PrimeRehashPolicy};
 
+pub mod iter;
 pub mod node;
 mod rehash_policy;
 
@@ -314,6 +315,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
                 while let Some(node) = unsafe { bucket_node.as_mut() } {
                     let new_index = Self::bucket_index(bucket_count, node.key());
                     let next_node = node.next;
+                    node.next = new_buckets[new_index];
                     new_buckets[new_index] = node as *mut Node<K, V>;
                     bucket_node = next_node;
                 }
@@ -459,5 +461,24 @@ mod test {
         assert_eq!(bar, 2);
         assert_eq!(baz, 2);
         assert_eq!(bag, 2);
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct A {
+        a: u32,
+    }
+
+    impl Hash<A> for DefaultHash<A> {
+        fn hash(_: &A) -> usize {
+            1
+        }
+    }
+
+    #[test]
+    fn collisions() {
+        let ht: HashTable<_, _> = (0..11).map(|n| (A { a: n }, n)).collect();
+        for i in 0..11 {
+            assert_eq!(ht.get(&A { a: i }), Some((&A { a: i }, &i)));
+        }
     }
 }
