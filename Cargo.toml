@@ -1,8 +1,14 @@
 [package]
 name = "eastl-rs"
+authors = ["Andrew Buck"]
 description = "EASTL binary-compatible Rust implementations"
+documentation = "https://docs.rs/crate/eastl-rs"
 version = "0.1.0"
 edition = "2021"
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/MrElectrify/EASTL-rs"
+keywords = ["EASTL", "STL"]
 
 [dependencies]
 superslice = "1.0"
