@@ -5,7 +5,11 @@ use crate::{
     hash::{DefaultHash, Hash},
 };
 
-use self::{node::Node, rehash_policy::PrimeRehashPolicy};
+use self::{
+    iter::{Iter, IterMut},
+    node::Node,
+    rehash_policy::PrimeRehashPolicy,
+};
 
 pub mod iter;
 pub mod node;
@@ -125,6 +129,19 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
         self.len() == 0
     }
 
+    /// Returns an iterator over the hash table's
+    /// key-value pairs
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter::new(self.buckets_imut())
+    }
+
+    /// Returns an iterator over the hash table's
+    /// key-value pairs, where the values are
+    /// mutable
+    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+        IterMut::new(self.buckets_imut())
+    }
+
     /// Returns the number of elements in the hash table
     pub fn len(&self) -> usize {
         self.element_count as usize
@@ -220,6 +237,11 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
                 self.bucket_count as usize,
             )
         }
+    }
+
+    /// Returns the buckets for the hash table
+    fn buckets_imut(&self) -> &[*mut Node<K, V>] {
+        unsafe { std::slice::from_raw_parts(self.bucket_array, self.bucket_count as usize) }
     }
 
     /// Returns the buckets for the hash table
@@ -476,7 +498,7 @@ mod test {
 
     #[test]
     fn collisions() {
-        let ht: HashTable<_, _> = (0..11).map(|n| (A { a: n }, n)).collect();
+        let ht: HashTable<A, u32> = (0..11).map(|n| (A { a: n }, n)).collect();
         for i in 0..11 {
             assert_eq!(ht.get(&A { a: i }), Some((&A { a: i }, &i)));
         }
