@@ -3,11 +3,17 @@ An binary-compatible EASTL implementation written in Rust
 
 [Crate](https://crates.io/crates/eastl-rs) | [Documentation](https://docs.rs/crate/eastl-rs)
 
-## Implemented containers
+## Fully implemented containers*
 - `HashMap`
 - `HashSet`
 - `String`
 - `Vector`
+
+* there might be some things missing :)
+
+## Partially implemented containers
+- `Map` (traversal only)
+- `Set` (traversal only)
 
 ## Planned containers
 - `HashMultimap`
