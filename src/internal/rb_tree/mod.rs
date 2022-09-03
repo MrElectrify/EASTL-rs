@@ -144,8 +144,8 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> RBTree<K, V, C, A> {
     /// `key`: The key to insert and index by
     ///
     /// `value`: The value to insert
-    pub fn insert(&mut self, key: K, _value: V) -> Option<V> {
-        let _insertion_position = self.find_insertion_position(&key);
+    pub fn _insert(&mut self, key: K, _value: V) -> Option<V> {
+        let _insertion_position = self._find_insertion_position(&key);
         unimplemented!()
     }
 
@@ -165,7 +165,7 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> RBTree<K, V, C, A> {
     /// # Arguments
     ///
     /// `key`: The key to index the pair
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    pub fn _remove(&mut self, key: &K) -> Option<V> {
         self.remove_entry(key).map(|(_, val)| val)
     }
 
@@ -206,23 +206,21 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> RBTree<K, V, C, A> {
     /// # Arguments
     ///
     /// `key`: The key to index the pair
-    fn find_insertion_position(&self, key: &K) -> Option<&mut Node<K, V>> {
-        // find the node that is either just greater or equal
+    fn _find_insertion_position(&self, key: &K) -> Option<&mut Node<K, V>> {
         let mut current_node = self.parent;
-        let mut prev_node = None;
+        let mut prev_node = std::ptr::null_mut();
+        let mut _is_key_less_than_node = false;
         while let Some(node) = unsafe { current_node.as_mut() } {
-            prev_node = unsafe { current_node.as_mut() };
-            if C::compare(key, node.key()) {
+            prev_node = current_node;
+            _is_key_less_than_node = C::compare(key, node.key());
+            if _is_key_less_than_node {
                 current_node = node.left;
-            // if the key !< node and node !< key they must be equal,
-            // which means we cannot insert it
-            } else if !C::compare(node.key(), key) {
-                return None;
             } else {
                 current_node = node.right;
             }
         }
-        prev_node
+
+        unsafe { prev_node.as_mut() }
     }
 
     /// Frees a node and its children

@@ -73,8 +73,8 @@ impl<K: Eq, C: Compare<K>, A: Allocator> Set<K, C, A> {
     /// # Arguments
     ///
     /// `key`: The key to insert and index by
-    pub fn insert(&mut self, key: K) -> bool {
-        self.inner.insert(key, ()).is_some()
+    fn _insert(&mut self, key: K) -> bool {
+        self.inner._insert(key, ()).is_some()
     }
 
     /// Returns true if the set contains no elements
@@ -90,7 +90,7 @@ impl<K: Eq, C: Compare<K>, A: Allocator> Set<K, C, A> {
     /// Removes a key from the set,
     /// returning the element if it was found
     ///
-    pub fn remove(&mut self, key: &K) -> Option<K> {
+    fn _remove(&mut self, key: &K) -> Option<K> {
         self.inner.remove_entry(key).map(|(k, _)| k)
     }
 }

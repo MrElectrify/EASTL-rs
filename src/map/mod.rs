@@ -94,8 +94,8 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> Map<K, V, C, A> {
     /// `key`: The key to insert and index by
     ///
     /// `value`: The value to insert
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        self.inner.insert(key, value)
+    fn _insert(&mut self, key: K, value: V) -> Option<V> {
+        self.inner._insert(key, value)
     }
 
     /// Returns true if the map contains no elements
@@ -114,8 +114,9 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> Map<K, V, C, A> {
     /// # Arguments
     ///
     /// `key`: The key to index the pair
-    pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.inner.remove(key)
+
+    fn _remove(&mut self, key: &K) -> Option<V> {
+        self.inner._remove(key)
     }
 
     /// Removes a key-value pair from the map,
