@@ -93,7 +93,7 @@ pub trait Allocator {
 #[derive(Default)]
 pub struct DefaultAllocator {
     // padding due to 1-size struct in C
-    _dummy: usize,
+    _dummy: u8,
 }
 
 impl Allocator for DefaultAllocator {
@@ -119,7 +119,7 @@ mod test {
     fn layout() {
         assert_eq!(
             std::mem::size_of::<DefaultAllocator>(),
-            std::mem::size_of::<usize>()
+            std::mem::size_of::<u8>()
         )
     }
 

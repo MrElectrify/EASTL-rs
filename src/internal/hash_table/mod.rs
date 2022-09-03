@@ -18,7 +18,9 @@ mod rehash_policy;
 /// A base hashtable used to support hash maps and sets
 #[repr(C)]
 pub struct HashTable<K: Eq, V, H: Hash<K> = DefaultHash<K>, A: Allocator = DefaultAllocator> {
-    pad: usize,
+    /// The C++ object has some key extractor functor here
+    /// that we don't need
+    _pad: u8,
     bucket_array: *mut *mut Node<K, V>,
     bucket_count: u32,
     element_count: u32,
@@ -38,7 +40,7 @@ where
     /// Creates an empty hashtable
     pub fn new() -> Self {
         Self {
-            pad: 0,
+            _pad: 0,
             bucket_array: unsafe { std::mem::transmute(EMPTY_BUCKET_ARR.as_ptr()) },
             bucket_count: 1,
             element_count: 0,
@@ -149,12 +151,20 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
 
     /// Removes a key-value pair from the hash table,
     /// returning the element if it was found
+    /// 
+    /// # Arguments
+    /// 
+    /// `key`: The key to index the pair
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.remove_entry(key).map(|(_, val)| val)
     }
 
     /// Removes a key-value pair from the hash table,
     /// returning the pair if it was found
+    /// 
+    /// # Arguments
+    /// 
+    /// `key`: The key to index the pair
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         // we need to trail behind by one so we can
         // update the correct pointer
@@ -183,7 +193,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
     /// Creates a hash table backed by an allocator
     pub fn with_allocator(allocator: A) -> Self {
         Self {
-            pad: 0,
+            _pad: 0,
             bucket_array: unsafe { std::mem::transmute(EMPTY_BUCKET_ARR.as_ptr()) },
             bucket_count: 1,
             element_count: 0,
@@ -383,6 +393,8 @@ unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, A: Allocator + Sync> Sync for Has
 
 #[cfg(test)]
 mod test {
+    use memoffset::offset_of;
+
     use crate::hash::{DefaultHash, Hash};
 
     use super::HashTable;
@@ -390,8 +402,28 @@ mod test {
     #[test]
     fn layout() {
         assert_eq!(
+            offset_of!(HashTable<u32, u32>, bucket_array),
+            std::mem::size_of::<usize>()
+        );
+        assert_eq!(
+            offset_of!(HashTable<u32, u32>, bucket_count),
+            std::mem::size_of::<usize>() * 2
+        );
+        assert_eq!(
+            offset_of!(HashTable<u32, u32>, element_count),
+            std::mem::size_of::<usize>() * 2 + std::mem::size_of::<u32>()
+        );
+        assert_eq!(
+            offset_of!(HashTable<u32, u32>, rehash_policy),
+            std::mem::size_of::<usize>() * 3
+        );
+        assert_eq!(
+            offset_of!(HashTable<u32, u32>, allocator),
+            std::mem::size_of::<usize>() * 4 + std::mem::size_of::<u32>()
+        );
+        assert_eq!(
             std::mem::size_of::<HashTable<u32, u32>>(),
-            std::mem::size_of::<usize>() * 6
+            std::mem::size_of::<usize>() * 5
         );
     }
 

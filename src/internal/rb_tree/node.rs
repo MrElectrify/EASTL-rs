@@ -4,15 +4,15 @@ use std::{fmt::Debug, marker::PhantomData};
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Color {
-    Black = 0,
-    Red = 1,
+    Red = 0,
+    Black = 1,
 }
 
 impl From<u32> for Color {
     fn from(val: u32) -> Self {
         match val {
-            0 => Self::Black,
-            1 => Self::Red,
+            0 => Self::Red,
+            1 => Self::Black,
             _ => panic!("Bad color"),
         }
     }
@@ -42,12 +42,7 @@ impl<K, V> ParentColor<K, V> {
     }
 
     /// Fetches the pointer stored in the parent-color compressed pair
-    pub fn ptr(&self) -> *const Node<K, V> {
-        unsafe { std::mem::transmute(self.raw_ptr & !1) }
-    }
-
-    /// Fetches the pointer stored in the parent-color compressed pair
-    pub fn ptr_mut(&mut self) -> *mut Node<K, V> {
+    pub fn ptr(&self) -> *mut Node<K, V> {
         unsafe { std::mem::transmute(self.raw_ptr & !1) }
     }
 
@@ -89,9 +84,9 @@ impl<K, V> Default for ParentColor<K, V> {
 #[repr(C)]
 #[derive(Debug)]
 pub(crate) struct Node<K, V> {
-    left: *mut Node<K, V>,
-    right: *mut Node<K, V>,
-    parent: ParentColor<K, V>,
+    pub left: *mut Node<K, V>,
+    pub right: *mut Node<K, V>,
+    pub parent: ParentColor<K, V>,
     key: K,
     val: V,
 }
@@ -145,12 +140,7 @@ impl<K, V> Node<K, V> {
     }
 
     /// The left child of the node
-    pub fn left(&self) -> Option<&Self> {
-        unsafe { self.left.as_ref() }
-    }
-
-    /// The left child of the node
-    pub fn left_mut(&mut self) -> Option<&mut Self> {
+    pub fn left(&self) -> Option<&mut Self> {
         unsafe { self.left.as_mut() }
     }
 
@@ -168,13 +158,8 @@ impl<K, V> Node<K, V> {
     }
 
     /// The parent of the node
-    pub fn parent(&self) -> Option<&Self> {
-        unsafe { self.parent.ptr().as_ref() }
-    }
-
-    /// The parent of the node
-    pub fn parent_mut(&mut self) -> Option<&mut Self> {
-        unsafe { self.parent.ptr_mut().as_mut() }
+    pub fn parent(&self) -> Option<&mut Self> {
+        unsafe { self.parent.ptr().as_mut() }
     }
 
     /// Sets the parent of the node, returning the
@@ -184,18 +169,13 @@ impl<K, V> Node<K, V> {
     ///
     /// `parent`: The new parent of the node
     pub fn set_parent(&mut self, parent: *mut Self) -> *mut Self {
-        let old_parent = self.parent.ptr_mut();
+        let old_parent = self.parent.ptr();
         self.parent.set_ptr(parent);
         old_parent
     }
 
     /// The right child of the node
-    pub fn right(&self) -> Option<&Self> {
-        unsafe { self.right.as_ref() }
-    }
-
-    /// The right child of the node
-    pub fn right_mut(&mut self) -> Option<&mut Self> {
+    pub fn right(&self) -> Option<&mut Self> {
         unsafe { self.right.as_mut() }
     }
 
@@ -236,7 +216,7 @@ mod test {
     fn empty_parent() {
         let parent_color = ParentColor::<u32, u32>::default();
 
-        assert_eq!(parent_color.color(), Color::Black);
+        assert_eq!(parent_color.color(), Color::Red);
         assert!(parent_color.ptr().is_null());
     }
 
@@ -246,7 +226,7 @@ mod test {
         let mut parent_color = ParentColor::new(Color::Black, &mut node);
 
         assert_eq!(parent_color.color(), Color::Black);
-        assert_eq!(parent_color.ptr_mut(), &mut node as *mut Node<u32, u32>);
+        assert_eq!(parent_color.ptr(), &mut node as *mut Node<u32, u32>);
     }
 
     #[test]
@@ -255,7 +235,7 @@ mod test {
         let mut parent_color = ParentColor::new(Color::Red, &mut node);
 
         assert_eq!(parent_color.color(), Color::Red);
-        assert_eq!(parent_color.ptr_mut(), &mut node as *mut Node<u32, u32>);
+        assert_eq!(parent_color.ptr(), &mut node as *mut Node<u32, u32>);
     }
 
     #[test]
@@ -265,7 +245,7 @@ mod test {
         assert!(node.left().is_none());
         assert!(node.right().is_none());
         assert!(node.parent().is_none());
-        assert_eq!(node.color(), Color::Black);
+        assert_eq!(node.color(), Color::Red);
         assert_eq!(node.val(), &0);
     }
 
