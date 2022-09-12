@@ -61,6 +61,21 @@ impl<K: Eq, H: Hash<K>, A: Allocator> HashSet<K, H, A> {
         self.hash_table.insert(key, ()).is_some()
     }
 
+    /// Creates a hash set backed by an allocator
+    ///
+    /// # Arguments
+    ///
+    /// `allocator`: The allocator to use to allocate and de-allocate memory
+    ///
+    /// # Safety
+    ///
+    /// The allocator must safely allocate and de-allocate valid memory
+    pub unsafe fn new_in(allocator: A) -> Self {
+        Self {
+            hash_table: HashTable::new_in(allocator),
+        }
+    }
+
     /// Returns true if the hash table is empty
     pub fn is_empty(&self) -> bool {
         self.hash_table.is_empty()
@@ -79,13 +94,6 @@ impl<K: Eq, H: Hash<K>, A: Allocator> HashSet<K, H, A> {
     /// Removes a key from the hash set, returning it if it was found
     pub fn remove(&mut self, key: &K) -> Option<K> {
         self.hash_table.remove_entry(key).map(|(key, _)| key)
-    }
-
-    /// Creates a hash set backed by an allocator
-    pub fn with_allocator(allocator: A) -> Self {
-        Self {
-            hash_table: HashTable::with_allocator(allocator),
-        }
     }
 }
 

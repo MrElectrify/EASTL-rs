@@ -39,17 +39,7 @@ where
 {
     /// Creates an empty hashtable
     pub fn new() -> Self {
-        Self {
-            _pad: 0,
-            bucket_array: unsafe { std::mem::transmute(EMPTY_BUCKET_ARR.as_ptr()) },
-            bucket_count: 1,
-            element_count: 0,
-            rehash_policy: PrimeRehashPolicy::default(),
-            allocator: DefaultAllocator::default(),
-            _phantom_key: PhantomData::default(),
-            _phantom_value: PhantomData::default(),
-            _phantom_hash: PhantomData::default(),
-        }
+        unsafe { Self::new_in(DefaultAllocator::default()) }
     }
 }
 
@@ -149,11 +139,34 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
         self.element_count as usize
     }
 
+    /// Creates a hash table backed by an allocator
+    ///
+    /// # Arguments
+    ///
+    /// `allocator`: The allocator to use to allocate and de-allocate memory
+    ///
+    /// # Safety
+    ///
+    /// The allocator must safely allocate and de-allocate valid memory
+    pub unsafe fn new_in(allocator: A) -> Self {
+        Self {
+            _pad: 0,
+            bucket_array: unsafe { std::mem::transmute(EMPTY_BUCKET_ARR.as_ptr()) },
+            bucket_count: 1,
+            element_count: 0,
+            rehash_policy: PrimeRehashPolicy::default(),
+            allocator,
+            _phantom_key: PhantomData::default(),
+            _phantom_value: PhantomData::default(),
+            _phantom_hash: PhantomData::default(),
+        }
+    }
+
     /// Removes a key-value pair from the hash table,
     /// returning the element if it was found
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// `key`: The key to index the pair
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.remove_entry(key).map(|(_, val)| val)
@@ -161,9 +174,9 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
 
     /// Removes a key-value pair from the hash table,
     /// returning the pair if it was found
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// `key`: The key to index the pair
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         // we need to trail behind by one so we can
@@ -187,21 +200,6 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
                 self.element_count -= 1;
                 Some((key, value))
             }
-        }
-    }
-
-    /// Creates a hash table backed by an allocator
-    pub fn with_allocator(allocator: A) -> Self {
-        Self {
-            _pad: 0,
-            bucket_array: unsafe { std::mem::transmute(EMPTY_BUCKET_ARR.as_ptr()) },
-            bucket_count: 1,
-            element_count: 0,
-            rehash_policy: PrimeRehashPolicy::default(),
-            allocator,
-            _phantom_key: PhantomData::default(),
-            _phantom_value: PhantomData::default(),
-            _phantom_hash: PhantomData::default(),
         }
     }
 

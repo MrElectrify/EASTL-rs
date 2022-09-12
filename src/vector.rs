@@ -25,13 +25,7 @@ pub struct Vector<T: Sized, A: Allocator = DefaultAllocator> {
 impl<T: Sized> Vector<T, DefaultAllocator> {
     /// Creates a new vector
     pub fn new() -> Self {
-        Self {
-            begin_ptr: std::ptr::null_mut(),
-            end_ptr: std::ptr::null_mut(),
-            capacity_ptr: std::ptr::null_mut(),
-            allocator: DefaultAllocator::default(),
-            _holds_data: PhantomData::default(),
-        }
+        Self::new_in(DefaultAllocator::default())
     }
 
     /// Creates a new vector with a capacity allocated

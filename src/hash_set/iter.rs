@@ -9,14 +9,14 @@ use crate::internal::hash_table::iter::CompatIter;
 /// It is unspecified whether or not an element
 /// inserted after an iterator was created will
 /// be yielded by the iterator
-pub struct Iter<'a, K: Eq> {
+pub struct Iter<'a, K: Eq + 'a> {
     inner: crate::internal::hash_table::iter::Iter<'a, K, ()>,
 }
 
-impl<'a, K: Eq> Iter<'a, K> {
+impl<'a, K: Eq + 'a> Iter<'a, K> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
-    pub fn into_compat(self) -> (CompatIter<K, ()>, CompatIter<K, ()>) {
+    pub fn into_compat(self) -> (CompatIter<'a, K, ()>, CompatIter<'a, K, ()>) {
         self.inner.into_compat()
     }
 
@@ -33,7 +33,7 @@ impl<'a, K: Eq> Iter<'a, K> {
     /// `begin`: The starting compatibility iterator
     ///
     /// `end`: The ending compatibility iterator
-    pub unsafe fn from_compat(begin: CompatIter<K, ()>, end: CompatIter<K, ()>) -> Self {
+    pub unsafe fn from_compat(begin: CompatIter<'a, K, ()>, end: CompatIter<'a, K, ()>) -> Self {
         Self {
             inner: crate::internal::hash_table::iter::Iter::from_compat(begin, end),
         }
@@ -51,7 +51,7 @@ impl<'a, K: Eq> Iter<'a, K> {
     }
 }
 
-impl<'a, K: Eq> Iterator for Iter<'a, K> {
+impl<'a, K: Eq + 'a> Iterator for Iter<'a, K> {
     type Item = &'a K;
 
     fn next(&mut self) -> Option<Self::Item> {

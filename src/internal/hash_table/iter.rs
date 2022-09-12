@@ -1,13 +1,15 @@
 use super::node::Node;
+use std::marker::PhantomData;
 
 /// A compatibility iterator for C++ iterators.
 /// Tho concept of begin and end are not used in
 /// rust, so these are strictly for compatibility's
 /// sake. They cannot actually be used to iterate.
 #[repr(C)]
-pub struct CompatIter<K: Eq, V> {
+pub struct CompatIter<'a, K: Eq + 'a, V: 'a> {
     bucket_ptr: *const *const Node<K, V>,
     node_ptr: *mut Node<K, V>,
+    _marker: PhantomData<&'a (K, V)>,
 }
 
 /// A compatibility mutable iterator for C++ iterators.
@@ -15,9 +17,10 @@ pub struct CompatIter<K: Eq, V> {
 /// rust, so these are strictly for compatibility's
 /// sake. They cannot actually be used to iterate.
 #[repr(C)]
-pub struct CompatIterMut<K: Eq, V> {
+pub struct CompatIterMut<'a, K: Eq + 'a, V: 'a> {
     bucket_ptr: *const *mut Node<K, V>,
     node_ptr: *mut Node<K, V>,
+    _marker: PhantomData<&'a (K, V)>,
 }
 
 /// An iterator that produces key-value pairs
@@ -33,7 +36,7 @@ pub struct CompatIterMut<K: Eq, V> {
 /// inserted after an iterator was created will
 /// be yielded by the iterator
 #[derive(Clone)]
-struct RawIter<'a, K: Eq, V> {
+struct RawIter<'a, K: Eq + 'a, V: 'a> {
     bucket_iter: std::slice::Iter<'a, *mut Node<K, V>>,
     node_ptr: *mut Node<K, V>,
 }
@@ -41,18 +44,20 @@ struct RawIter<'a, K: Eq, V> {
 impl<'a, K: Eq, V> RawIter<'a, K, V> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
-    fn into_compat(self) -> (CompatIter<K, V>, CompatIter<K, V>) {
+    fn into_compat(self) -> (CompatIter<'a, K, V>, CompatIter<'a, K, V>) {
         (
-            CompatIter::<K, V> {
+            CompatIter::<'a, K, V> {
                 bucket_ptr: self.bucket_iter.as_slice().as_ptr() as *const *const Node<K, V>,
                 node_ptr: self.node_ptr,
+                _marker: PhantomData::default(),
             },
-            CompatIter::<K, V> {
+            CompatIter::<'a, K, V> {
                 bucket_ptr: unsafe {
                     (self.bucket_iter.as_slice().as_ptr() as *const *const Node<K, V>)
                         .add(self.bucket_iter.as_slice().len())
                 },
                 node_ptr: std::ptr::null_mut(),
+                _marker: PhantomData::default(),
             },
         )
     }
@@ -64,19 +69,21 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
     ///
     /// Mutability of the exposed iterator must be enforced.
     /// POLLO: Is there a better way to do this?
-    unsafe fn into_compat_mut(self) -> (CompatIterMut<K, V>, CompatIterMut<K, V>) {
+    unsafe fn into_compat_mut(self) -> (CompatIterMut<'a, K, V>, CompatIterMut<'a, K, V>) {
         (
-            CompatIterMut::<K, V> {
+            CompatIterMut::<'a, K, V> {
                 bucket_ptr: self.bucket_iter.as_slice().as_ptr(),
                 node_ptr: self.node_ptr,
+                _marker: PhantomData::default(),
             },
-            CompatIterMut::<K, V> {
+            CompatIterMut::<'a, K, V> {
                 bucket_ptr: self
                     .bucket_iter
                     .as_slice()
                     .as_ptr()
                     .add(self.bucket_iter.as_slice().len()),
                 node_ptr: std::ptr::null_mut(),
+                _marker: PhantomData::default(),
             },
         )
     }
@@ -191,14 +198,14 @@ impl<'a, K: Eq, V> Iterator for RawIter<'a, K, V> {
 /// inserted after an iterator was created will
 /// be yielded by the iterator
 #[derive(Clone)]
-pub struct Iter<'a, K: Eq, V> {
+pub struct Iter<'a, K: Eq + 'a, V: 'a> {
     inner: RawIter<'a, K, V>,
 }
 
-impl<'a, K: Eq, V> Iter<'a, K, V> {
+impl<'a, K: Eq + 'a, V: 'a> Iter<'a, K, V> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
-    pub fn into_compat(self) -> (CompatIter<K, V>, CompatIter<K, V>) {
+    pub fn into_compat(self) -> (CompatIter<'a, K, V>, CompatIter<'a, K, V>) {
         self.inner.into_compat()
     }
 
@@ -215,7 +222,7 @@ impl<'a, K: Eq, V> Iter<'a, K, V> {
     /// `begin`: The starting compatibility iterator
     ///
     /// `end`: The ending compatibility iterator
-    pub unsafe fn from_compat(begin: CompatIter<K, V>, end: CompatIter<K, V>) -> Self {
+    pub unsafe fn from_compat(begin: CompatIter<'a, K, V>, end: CompatIter<'a, K, V>) -> Self {
         Self {
             inner: RawIter::from_compat(begin, end),
         }
@@ -254,7 +261,7 @@ impl<'a, K: Eq, V> Iter<'a, K, V> {
     }
 }
 
-impl<'a, K: Eq, V> Iterator for Iter<'a, K, V> {
+impl<'a, K: Eq + 'a, V: 'a> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -276,20 +283,20 @@ impl<'a, K: Eq, V> Iterator for Iter<'a, K, V> {
 /// inserted after an iterator was created will
 /// be yielded by the iterator
 #[derive(Clone)]
-pub struct IterMut<'a, K: Eq, V> {
+pub struct IterMut<'a, K: Eq + 'a, V: 'a> {
     inner: RawIter<'a, K, V>,
 }
 
-impl<'a, K: Eq, V> IterMut<'a, K, V> {
+impl<'a, K: Eq + 'a, V: 'a> IterMut<'a, K, V> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
-    pub fn into_compat(self) -> (CompatIter<K, V>, CompatIter<K, V>) {
+    pub fn into_compat(self) -> (CompatIter<'a, K, V>, CompatIter<'a, K, V>) {
         self.inner.into_compat()
     }
 
     /// Converts the Rust iterator into a pair of
     /// mutable `(begin, end)` compatibility iterators
-    pub fn into_compat_mut(self) -> (CompatIterMut<K, V>, CompatIterMut<K, V>) {
+    pub fn into_compat_mut(self) -> (CompatIterMut<'a, K, V>, CompatIterMut<'a, K, V>) {
         unsafe { self.inner.into_compat_mut() }
     }
 
@@ -326,7 +333,7 @@ impl<'a, K: Eq, V> IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K: Eq, V> Iterator for IterMut<'a, K, V> {
+impl<'a, K: Eq + 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {

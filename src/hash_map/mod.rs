@@ -93,6 +93,21 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashMap<K, V, H, A> {
         self.hash_table.len()
     }
 
+    /// Creates a hash map backed by an allocator
+    ///
+    /// # Arguments
+    ///
+    /// `allocator`: The allocator to use to allocate and de-allocate memory
+    ///
+    /// # Safety
+    ///
+    /// The allocator must safely allocate and de-allocate valid memory
+    pub unsafe fn new_in(allocator: A) -> Self {
+        Self {
+            hash_table: HashTable::new_in(allocator),
+        }
+    }
+
     /// Removes a key-value pair from the hash map,
     /// returning the element if it was found
     pub fn remove(&mut self, key: &K) -> Option<V> {
@@ -103,13 +118,6 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashMap<K, V, H, A> {
     /// returning the pair if it was found
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         self.hash_table.remove_entry(key)
-    }
-
-    /// Creates a hash map backed by an allocator
-    pub fn with_allocator(allocator: A) -> Self {
-        Self {
-            hash_table: HashTable::with_allocator(allocator),
-        }
     }
 }
 

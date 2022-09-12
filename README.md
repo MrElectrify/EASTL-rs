@@ -8,6 +8,8 @@ An binary-compatible EASTL implementation written in Rust
 - `HashSet`
 - `String`
 - `Vector`
+- `Deque`
+- `Queue`
 
 * there might be some things missing :)
 
