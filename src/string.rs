@@ -182,7 +182,7 @@ impl<A: Allocator> Deref for String<A> {
 
 impl<A: Allocator> DerefMut for String<A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { std::str::from_utf8_unchecked_mut(&mut *self.vec) }
+        unsafe { std::str::from_utf8_unchecked_mut(&mut self.vec) }
     }
 }
 

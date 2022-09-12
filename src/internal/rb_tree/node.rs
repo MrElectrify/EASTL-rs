@@ -43,7 +43,7 @@ impl<K, V> ParentColor<K, V> {
 
     /// Fetches the pointer stored in the parent-color compressed pair
     pub fn ptr(&self) -> *mut Node<K, V> {
-        unsafe { std::mem::transmute(self.raw_ptr & !1) }
+        (self.raw_ptr & !1) as *mut Node<K, V>
     }
 
     /// Sets the color of the node

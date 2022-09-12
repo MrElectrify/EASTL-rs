@@ -108,26 +108,24 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
     pub fn pop_back(&mut self) -> Option<T> {
         if self.is_empty() {
             None
+        } else if self.end_it.current != self.end_it.begin {
+            // no de-allocation necessary!
+            self.end_it.current = unsafe { self.end_it.current.sub(1) };
+
+            Some(unsafe { self.end_it.current.read() })
         } else {
-            if self.end_it.current != self.end_it.begin {
-                // no de-allocation necessary!
-                self.end_it.current = unsafe { self.end_it.current.sub(1) };
+            // we need to de-allocate the current array pointer
+            self.free_subarray(self.end_it.begin);
 
-                Some(unsafe { self.end_it.current.read() })
-            } else {
-                // we need to de-allocate the current array pointer
-                self.free_subarray(self.end_it.begin);
+            // setup the end iterator again
+            unsafe {
+                self.end_it
+                    .set_subarray(self.end_it.current_array.sub(1), Self::SUBARRAY_SIZE);
+                self.end_it.current = self.end_it.end.sub(1);
+            };
 
-                // setup the end iterator again
-                unsafe {
-                    self.end_it
-                        .set_subarray(self.end_it.current_array.sub(1), Self::SUBARRAY_SIZE);
-                    self.end_it.current = self.end_it.end.sub(1);
-                };
-
-                // simply read the last value in the subarray
-                Some(unsafe { self.end_it.current.read() })
-            }
+            // simply read the last value in the subarray
+            Some(unsafe { self.end_it.current.read() })
         }
     }
 
@@ -135,29 +133,27 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
     pub fn pop_front(&mut self) -> Option<T> {
         if self.is_empty() {
             None
+        } else if self.begin_it.current != unsafe { self.begin_it.end.sub(1) } {
+            // no de-allocation necessary!
+            let elem = unsafe { self.begin_it.current.read() };
+            self.begin_it.current = unsafe { self.begin_it.current.add(1) };
+
+            Some(elem)
         } else {
-            if self.begin_it.current != unsafe { self.begin_it.end.sub(1) } {
-                // no de-allocation necessary!
-                let elem = unsafe { self.begin_it.current.read() };
-                self.begin_it.current = unsafe { self.begin_it.current.add(1) };
+            // read the element before deallocation
+            let elem = unsafe { self.begin_it.current.read() };
 
-                Some(elem)
-            } else {
-                // read the element before deallocation
-                let elem = unsafe { self.begin_it.current.read() };
+            // we need to de-allocate the current array pointer
+            self.free_subarray(self.begin_it.begin);
 
-                // we need to de-allocate the current array pointer
-                self.free_subarray(self.begin_it.begin);
-
-                // setup the begin iterator again
-                unsafe {
-                    self.begin_it
-                        .set_subarray(self.begin_it.current_array.add(1), Self::SUBARRAY_SIZE);
-                    self.begin_it.current = self.begin_it.begin;
-                }
-
-                Some(elem)
+            // setup the begin iterator again
+            unsafe {
+                self.begin_it
+                    .set_subarray(self.begin_it.current_array.add(1), Self::SUBARRAY_SIZE);
+                self.begin_it.current = self.begin_it.begin;
             }
+
+            Some(elem)
         }
     }
 

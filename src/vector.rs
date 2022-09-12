@@ -251,7 +251,7 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
 
 impl<T, A: Allocator> AsRef<[T]> for Vector<T, A> {
     fn as_ref(&self) -> &[T] {
-        &*self
+        self
     }
 }
 

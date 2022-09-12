@@ -155,12 +155,10 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
 
     /// Finds the next non-null bucket
     fn next_bucket(&mut self) -> Option<*mut Node<K, V>> {
-        for &ptr in self.bucket_iter.by_ref() {
-            if !ptr.is_null() {
-                return Some(ptr);
-            }
-        }
-        None
+        self.bucket_iter
+            .by_ref()
+            .find(|&&ptr| !ptr.is_null())
+            .copied()
     }
 }
 
