@@ -222,7 +222,7 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
     /// # Arguments
     ///
     /// `number_of_ptrs`: The number of pointers to allocate
-    fn allocate_ptr_array<'b>(&self, number_of_ptrs: usize) -> &'b mut [*mut T] {
+    fn allocate_ptr_array<'b>(&mut self, number_of_ptrs: usize) -> &'b mut [*mut T] {
         unsafe {
             std::slice::from_raw_parts_mut(
                 self.allocator.allocate::<*mut T>(number_of_ptrs),
@@ -232,12 +232,12 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
     }
 
     /// Allocates a subarray
-    fn allocate_subarray(&self) -> *mut T {
+    fn allocate_subarray(&mut self) -> *mut T {
         unsafe { self.allocator.allocate::<T>(Self::SUBARRAY_SIZE) }
     }
 
     /// Frees the subarray pointer array
-    fn free_ptr_array(&self) {
+    fn free_ptr_array(&mut self) {
         unsafe {
             self.allocator
                 .deallocate(self.ptr_array, self.ptr_array_size)
@@ -249,7 +249,7 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
     /// # Arguments
     ///
     /// `subarray`: The subarray to free
-    fn free_subarray(&self, subarray: *mut T) {
+    fn free_subarray(&mut self, subarray: *mut T) {
         unsafe { self.allocator.deallocate(subarray, Self::SUBARRAY_SIZE) }
     }
 

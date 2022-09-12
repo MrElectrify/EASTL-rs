@@ -295,7 +295,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
     /// # Arguments
     ///
     /// `bucket_node`: The node in the bucket
-    fn free_bucket(&self, bucket_node: &mut Node<K, V>) {
+    fn free_bucket(&mut self, bucket_node: &mut Node<K, V>) {
         // free the next node
         if let Some(next_node) = bucket_node.next_mut() {
             self.free_bucket(next_node);
