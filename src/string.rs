@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+use std::str::FromStr;
 use std::{
     fmt::{Debug, Display},
     ops::{Deref, DerefMut},
@@ -34,12 +36,33 @@ impl String<DefaultAllocator> {
 }
 
 impl<A: Allocator> String<A> {
+    /// Creates a string from a string slice with a custom allocator
+    ///
+    /// # Arguments
+    ///
+    /// `s`: The string slice
+    ///
+    /// `allocator`: The allocator used to allocate and de-allocate elements
+    ///
+    /// # Safety
+    ///
+    /// The allocator specified must safely allocate ande de-allocate valid memory
+    pub unsafe fn from_in(s: &str, allocator: A) -> Self {
+        Self {
+            vec: Vector::from_in(s.as_bytes(), allocator),
+        }
+    }
+
     /// Creates a string with a custom allocator
     ///
     /// # Arguments
     ///
     /// `allocator`: The allocator used to allocate and de-allocate elements
-    pub fn new_in(allocator: A) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// The allocator specified must safely allocate ande de-allocate valid memory
+    pub unsafe fn new_in(allocator: A) -> Self {
         Self {
             vec: Vector::new_in(allocator),
         }
@@ -170,10 +193,20 @@ impl<A: Allocator> Display for String<A> {
 }
 
 impl From<&str> for String<DefaultAllocator> {
-    fn from(buf: &str) -> Self {
+    fn from(s: &str) -> Self {
         Self {
-            vec: Vector::from(buf),
+            vec: Vector::from(s.as_bytes()),
         }
+    }
+}
+
+impl FromStr for String<DefaultAllocator> {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            vec: Vector::from(s.as_bytes()),
+        })
     }
 }
 

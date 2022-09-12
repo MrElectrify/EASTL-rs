@@ -25,7 +25,7 @@ pub struct Vector<T: Sized, A: Allocator = DefaultAllocator> {
 impl<T: Sized> Vector<T, DefaultAllocator> {
     /// Creates a new vector
     pub fn new() -> Self {
-        Self::new_in(DefaultAllocator::default())
+        unsafe { Self::new_in(DefaultAllocator::default()) }
     }
 
     /// Creates a new vector with a capacity allocated
@@ -41,12 +41,33 @@ impl<T: Sized> Vector<T, DefaultAllocator> {
 }
 
 impl<T: Sized, A: Allocator> Vector<T, A> {
+    /// Creates a vector from a buffer with a custom allocator
+    ///
+    /// # Arguments
+    ///
+    /// `buf`: The buffer
+    ///
+    /// `allocator`: The allocator used to allocate and de-allocate elements
+    ///
+    /// # Safety
+    ///
+    /// The allocator specified must safely allocate ande de-allocate valid memory
+    pub unsafe fn from_in(buf: &[T], allocator: A) -> Self {
+        let mut this = Self::new_in(allocator);
+        this.assign(buf);
+        this
+    }
+
     /// Creates a vector with a custom allocator
     ///
     /// # Arguments
     ///
     /// `allocator`: The allocator used to allocate and de-allocate elements
-    pub fn new_in(allocator: A) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// The allocator specified must safely allocate ande de-allocate valid memory
+    pub unsafe fn new_in(allocator: A) -> Self {
         Self {
             begin_ptr: std::ptr::null_mut(),
             end_ptr: std::ptr::null_mut(),
@@ -306,14 +327,6 @@ impl<T: Sized, const N: usize> From<&[T; N]> for Vector<T, DefaultAllocator> {
     fn from(buf: &[T; N]) -> Self {
         let mut v = Vector::new();
         v.assign(buf);
-        v
-    }
-}
-
-impl From<&str> for Vector<u8, DefaultAllocator> {
-    fn from(str: &str) -> Self {
-        let mut v = Vector::new();
-        v.assign(str.as_bytes());
         v
     }
 }
