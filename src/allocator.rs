@@ -125,7 +125,7 @@ mod test {
 
     #[test]
     fn align() {
-        let alloc = DefaultAllocator::default();
+        let mut alloc = DefaultAllocator::default();
         let aligned_by_4 = unsafe { alloc.allocate_raw_aligned(20, 4) };
         unsafe { alloc.deallocate_raw_aligned(aligned_by_4, 20, 4) };
         let aligned_by_8 = unsafe { alloc.allocate_raw_aligned(20, 8) };

@@ -1,3 +1,4 @@
+use std::ffi::{c_char, CStr};
 use std::marker::PhantomData;
 
 /// Defines a hash function which should have good anti-collision
@@ -112,15 +113,26 @@ impl Hash<str> for DefaultHash<str> {
     }
 }
 
+impl Hash<*const c_char> for DefaultHash<*const c_char> {
+    fn hash(val: &*const c_char) -> usize {
+        DefaultHash::<str>::hash(unsafe { CStr::from_ptr(*val) }.to_string_lossy().as_ref())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::DefaultHash;
     use super::Hash;
+    use std::ffi::{c_char, CString};
 
     #[test]
     fn test_str() {
         assert_eq!(DefaultHash::hash(""), 2166136261);
         assert_eq!(DefaultHash::hash("Test"), 556965705);
+        assert_eq!(
+            DefaultHash::hash(&(CString::new("Test").unwrap().into_raw() as *const c_char)),
+            556965705
+        );
         assert_eq!(
             DefaultHash::hash("The big brown fox jumped over the lazy dog"),
             3003320415
