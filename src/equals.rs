@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 /// A trait which takes two instances of something and returns true if they are equal
-pub trait Equals<T> {
+pub trait Equals<T: ?Sized> {
     /// Returns true if both instances are equal
     ///
     /// # Arguments
