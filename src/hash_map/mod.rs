@@ -4,6 +4,7 @@ use crate::{
     hash::{DefaultHash, Hash},
     internal::hash_table::HashTable,
 };
+use std::fmt::{Debug, Formatter};
 
 use self::iter::{Iter, IterMut};
 
@@ -125,6 +126,21 @@ impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashMap<K, V, H, E, A> {
     /// returning the pair if it was found
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         self.hash_table.remove_entry(key)
+    }
+}
+
+impl<K: Debug + Eq, V: Debug, H: Hash<K>, E: Equals<K>, A: Allocator> Debug
+    for HashMap<K, V, H, E, A>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{{}}}",
+            self.iter()
+                .map(|(k, v)| format!("{:?}: {:?}", k, v))
+                .collect::<Vec<String>>()
+                .join(",")
+        )
     }
 }
 

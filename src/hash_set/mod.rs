@@ -4,6 +4,7 @@ use crate::{
     hash::{DefaultHash, Hash},
     internal::hash_table::HashTable,
 };
+use std::fmt::{Debug, Formatter};
 
 use self::iter::Iter;
 
@@ -100,6 +101,19 @@ impl<K: Eq, H: Hash<K>, E: Equals<K>, A: Allocator> HashSet<K, H, E, A> {
     /// Removes a key from the hash set, returning it if it was found
     pub fn remove(&mut self, key: &K) -> Option<K> {
         self.hash_table.remove_entry(key).map(|(key, _)| key)
+    }
+}
+
+impl<K: Debug + Eq, H: Hash<K>, E: Equals<K>, A: Allocator> Debug for HashSet<K, H, E, A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{{}}}",
+            self.iter()
+                .map(|k| format!("{:?}", k))
+                .collect::<Vec<String>>()
+                .join(",")
+        )
     }
 }
 
