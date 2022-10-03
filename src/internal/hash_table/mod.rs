@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use crate::equals::{EqualTo, Equals};
 use crate::{
     allocator::{Allocator, DefaultAllocator},
     hash::{DefaultHash, Hash},
@@ -17,7 +18,13 @@ mod rehash_policy;
 
 /// A base hashtable used to support hash maps and sets
 #[repr(C)]
-pub struct HashTable<K: Eq, V, H: Hash<K> = DefaultHash<K>, A: Allocator = DefaultAllocator> {
+pub struct HashTable<
+    K: Eq,
+    V,
+    H: Hash<K> = DefaultHash<K>,
+    E: Equals<K> = EqualTo<K>,
+    A: Allocator = DefaultAllocator,
+> {
     /// The C++ object has some key extractor functor here
     /// that we don't need
     _pad: u8,
@@ -26,14 +33,12 @@ pub struct HashTable<K: Eq, V, H: Hash<K> = DefaultHash<K>, A: Allocator = Defau
     element_count: u32,
     rehash_policy: PrimeRehashPolicy,
     allocator: A,
-    _phantom_key: PhantomData<K>,
-    _phantom_value: PhantomData<V>,
-    _phantom_hash: PhantomData<H>,
+    _markers: PhantomData<(K, V, H, E)>,
 }
 
 static EMPTY_BUCKET_ARR: [usize; 2] = [0; 2];
 
-impl<K: Eq, V> HashTable<K, V, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq, V> HashTable<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -43,7 +48,7 @@ where
     }
 }
 
-impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
+impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashTable<K, V, H, E, A> {
     /// Clears the hash table, removing all key-value pairs
     pub fn clear(&mut self) {
         self.free_buckets();
@@ -156,9 +161,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
             element_count: 0,
             rehash_policy: PrimeRehashPolicy::default(),
             allocator,
-            _phantom_key: PhantomData::default(),
-            _phantom_value: PhantomData::default(),
-            _phantom_hash: PhantomData::default(),
+            _markers: PhantomData::default(),
         }
     }
 
@@ -183,7 +186,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
         // update the correct pointer
         let mut bucket = self.bucket_for_key_mut(key);
         unsafe {
-            while !(*bucket).is_null() && !(**bucket).matches(key) {
+            while !(*bucket).is_null() && !E::equals((**bucket).key(), key) {
                 bucket = &mut (**bucket).next;
             }
             if (*bucket).is_null() {
@@ -264,7 +267,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
     /// `bucket`: The bucket to search in
     fn find_in_bucket<'a>(mut bucket: Option<&'a Node<K, V>>, key: &K) -> Option<&'a Node<K, V>> {
         while let Some(node) = bucket {
-            if node.matches(key) {
+            if E::equals(node.key(), key) {
                 return Some(node);
             }
             bucket = node.next();
@@ -282,7 +285,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
         key: &K,
     ) -> Option<&'a mut Node<K, V>> {
         while let Some(node) = bucket {
-            if node.matches(key) {
+            if E::equals(node.key(), key) {
                 return Some(node);
             }
             bucket = node.next_mut();
@@ -358,7 +361,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashTable<K, V, H, A> {
     }
 }
 
-impl<K: Eq, V> Default for HashTable<K, V, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq, V> Default for HashTable<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -367,13 +370,14 @@ where
     }
 }
 
-impl<K: Eq, V, H: Hash<K>, A: Allocator> Drop for HashTable<K, V, H, A> {
+impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> Drop for HashTable<K, V, H, E, A> {
     fn drop(&mut self) {
         self.free_buckets();
     }
 }
 
-impl<K: Eq, V> FromIterator<(K, V)> for HashTable<K, V, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq, V> FromIterator<(K, V)>
+    for HashTable<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -386,8 +390,14 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, A: Allocator + Send> Send for HashTable<K, V, H, A> {}
-unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, A: Allocator + Sync> Sync for HashTable<K, V, H, A> {}
+unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, E: Equals<K>, A: Allocator + Send> Send
+    for HashTable<K, V, H, E, A>
+{
+}
+unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, E: Equals<K>, A: Allocator + Sync> Sync
+    for HashTable<K, V, H, E, A>
+{
+}
 
 #[cfg(test)]
 mod test {

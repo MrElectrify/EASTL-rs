@@ -1,3 +1,4 @@
+use crate::equals::{EqualTo, Equals};
 use crate::{
     allocator::{Allocator, DefaultAllocator},
     hash::{DefaultHash, Hash},
@@ -10,11 +11,17 @@ pub mod iter;
 
 /// A hash map that can store and fetch values from a key in O(1) time
 #[repr(C)]
-pub struct HashMap<K: Eq, V, H: Hash<K> = DefaultHash<K>, A: Allocator = DefaultAllocator> {
-    hash_table: HashTable<K, V, H, A>,
+pub struct HashMap<
+    K: Eq,
+    V,
+    H: Hash<K> = DefaultHash<K>,
+    E: Equals<K> = EqualTo<K>,
+    A: Allocator = DefaultAllocator,
+> {
+    hash_table: HashTable<K, V, H, E, A>,
 }
 
-impl<K: Eq, V> HashMap<K, V, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq, V> HashMap<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -26,7 +33,7 @@ where
     }
 }
 
-impl<K: Eq, V, H: Hash<K>, A: Allocator> HashMap<K, V, H, A> {
+impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashMap<K, V, H, E, A> {
     /// Clears the hash map, removing all key-value pairs
     pub fn clear(&mut self) {
         self.hash_table.clear()
@@ -121,7 +128,7 @@ impl<K: Eq, V, H: Hash<K>, A: Allocator> HashMap<K, V, H, A> {
     }
 }
 
-impl<K: Eq, V> Default for HashMap<K, V, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq, V> Default for HashMap<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -130,7 +137,7 @@ where
     }
 }
 
-impl<K: Eq, V> FromIterator<(K, V)> for HashMap<K, V, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq, V> FromIterator<(K, V)> for HashMap<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -141,8 +148,14 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, A: Allocator + Send> Send for HashMap<K, V, H, A> {}
-unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, A: Allocator + Sync> Sync for HashMap<K, V, H, A> {}
+unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, E: Equals<K>, A: Allocator + Send> Send
+    for HashMap<K, V, H, E, A>
+{
+}
+unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, E: Equals<K>, A: Allocator + Sync> Sync
+    for HashMap<K, V, H, E, A>
+{
+}
 
 #[cfg(test)]
 mod test {

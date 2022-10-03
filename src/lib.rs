@@ -1,6 +1,7 @@
 pub mod allocator;
 pub mod compare;
 pub mod deque;
+pub mod equals;
 pub mod hash;
 pub mod hash_map;
 pub mod hash_set;

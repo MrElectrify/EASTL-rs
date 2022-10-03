@@ -1,3 +1,4 @@
+use crate::equals::{EqualTo, Equals};
 use crate::{
     allocator::{Allocator, DefaultAllocator},
     hash::{DefaultHash, Hash},
@@ -10,11 +11,16 @@ pub mod iter;
 
 /// A hash set that can store and fetch keys in O(1) time
 #[repr(C)]
-pub struct HashSet<K: Eq, H: Hash<K> = DefaultHash<K>, A: Allocator = DefaultAllocator> {
-    hash_table: HashTable<K, (), H, A>,
+pub struct HashSet<
+    K: Eq,
+    H: Hash<K> = DefaultHash<K>,
+    E: Equals<K> = EqualTo<K>,
+    A: Allocator = DefaultAllocator,
+> {
+    hash_table: HashTable<K, (), H, E, A>,
 }
 
-impl<K: Eq> HashSet<K, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq> HashSet<K, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -26,7 +32,7 @@ where
     }
 }
 
-impl<K: Eq, H: Hash<K>, A: Allocator> HashSet<K, H, A> {
+impl<K: Eq, H: Hash<K>, E: Equals<K>, A: Allocator> HashSet<K, H, E, A> {
     /// Clears the hash set, removing all keys
     pub fn clear(&mut self) {
         self.hash_table.clear()
@@ -97,7 +103,7 @@ impl<K: Eq, H: Hash<K>, A: Allocator> HashSet<K, H, A> {
     }
 }
 
-impl<K: Eq> Default for HashSet<K, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq> Default for HashSet<K, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -106,7 +112,7 @@ where
     }
 }
 
-impl<K: Eq> FromIterator<K> for HashSet<K, DefaultHash<K>, DefaultAllocator>
+impl<K: Eq> FromIterator<K> for HashSet<K, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -117,8 +123,14 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, H: Hash<K>, A: Allocator + Send> Send for HashSet<K, H, A> {}
-unsafe impl<K: Eq + Sync, H: Hash<K>, A: Allocator + Sync> Sync for HashSet<K, H, A> {}
+unsafe impl<K: Eq + Send, H: Hash<K>, E: Equals<K>, A: Allocator + Send> Send
+    for HashSet<K, H, E, A>
+{
+}
+unsafe impl<K: Eq + Sync, H: Hash<K>, E: Equals<K>, A: Allocator + Sync> Sync
+    for HashSet<K, H, E, A>
+{
+}
 
 #[cfg(test)]
 mod test {

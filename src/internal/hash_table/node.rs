@@ -39,15 +39,6 @@ impl<K: Eq, V> Node<K, V> {
         &mut self.val
     }
 
-    /// Returns true if the probing key matches the node
-    ///
-    /// # Arguments
-    ///
-    /// `key`: The probing key
-    pub fn matches(&self, key: &K) -> bool {
-        &self.key == key
-    }
-
     /// Returns the next node following this node
     pub fn next(&self) -> Option<&Self> {
         unsafe { self.next.as_ref() }
