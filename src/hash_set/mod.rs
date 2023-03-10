@@ -110,7 +110,7 @@ impl<K: Debug + Eq, H: Hash<K>, E: Equals<K>, A: Allocator> Debug for HashSet<K,
             f,
             "{{{}}}",
             self.iter()
-                .map(|k| format!("{:?}", k))
+                .map(|k| format!("{k:?}"))
                 .collect::<Vec<String>>()
                 .join(",")
         )
@@ -155,10 +155,7 @@ mod test {
     #[test]
     fn iter() {
         let reference_map: BTreeSet<u32> = (0..10).map(|n| n * 10).collect();
-        let hm: HashSet<u32> = reference_map.iter().map(|k| *k).collect();
-        assert_eq!(
-            hm.iter().map(|k| *k).collect::<BTreeSet<u32>>(),
-            reference_map
-        );
+        let hm: HashSet<u32> = reference_map.iter().copied().collect();
+        assert_eq!(hm.iter().copied().collect::<BTreeSet<u32>>(), reference_map);
     }
 }

@@ -479,7 +479,9 @@ mod test {
         let mut ht: HashTable<u32, u32> = [(1, 2), (2, 3), (3, 4)].into_iter().collect();
         assert_eq!(ht.len(), 3);
         assert_eq!(ht.get(&2), Some((&2, &3)));
-        ht.get_mut(&3).map(|v| *v = 5);
+        if let Some(v) = ht.get_mut(&3) {
+            *v = 5;
+        }
         assert_eq!(ht.get(&3), Some((&3, &5)));
     }
 
@@ -498,15 +500,12 @@ mod test {
         fn eq(&self, other: &Self) -> bool {
             self.a == other.a
         }
-        fn ne(&self, other: &Self) -> bool {
-            self.a != other.a
-        }
     }
     impl<'a> Eq for Test<'a> {}
 
     impl<'a> Hash<Test<'a>> for DefaultHash<Test<'a>> {
         fn hash(val: &Test<'a>) -> usize {
-            unsafe { std::mem::transmute(val.r as *const u32) }
+            val.r as *const u32 as usize
         }
     }
 

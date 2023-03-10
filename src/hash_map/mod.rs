@@ -67,7 +67,7 @@ impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashMap<K, V, H, E, A> {
         self.hash_table.get_mut(key)
     }
 
-    /// Inserts the key-value pair into the hash map
+    /// Inserts the key-value pair into the hash map, returning the old value in the map
     ///
     /// # Arguments
     ///
@@ -137,7 +137,7 @@ impl<K: Debug + Eq, V: Debug, H: Hash<K>, E: Equals<K>, A: Allocator> Debug
             f,
             "{{{}}}",
             self.iter()
-                .map(|(k, v)| format!("{:?}: {:?}", k, v))
+                .map(|(k, v)| format!("{k:?}: {v:?}"))
                 .collect::<Vec<String>>()
                 .join(",")
         )

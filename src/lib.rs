@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod allocator;
 pub mod compare;
 pub mod deque;
@@ -11,3 +13,4 @@ pub mod queue;
 pub mod set;
 pub mod string;
 pub mod vector;
+pub mod vector_map;

@@ -104,6 +104,23 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
         (unsafe { self.capacity_ptr.offset_from(self.begin_ptr) }) as usize
     }
 
+    /// Clears all of the contents
+    pub fn clear(&mut self) {
+        if !self.begin_ptr.is_null() {
+            unsafe {
+                // drop all elements in place
+                std::ptr::drop_in_place(self.as_slice_mut());
+                // free the array
+                self.allocator.deallocate::<T>(self.begin_ptr, self.len())
+            }
+        }
+
+        // reset our contents
+        self.begin_ptr = std::ptr::null_mut();
+        self.end_ptr = std::ptr::null_mut();
+        self.capacity_ptr = std::ptr::null_mut();
+    }
+
     /// Returns true if the vector is empty
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -266,14 +283,7 @@ where
     A: Allocator,
 {
     fn drop(&mut self) {
-        if !self.begin_ptr.is_null() {
-            unsafe {
-                // drop all elements in place
-                std::ptr::drop_in_place(self.as_slice_mut());
-                // free the array
-                self.allocator.deallocate::<T>(self.begin_ptr, self.len())
-            }
-        }
+        self.clear()
     }
 }
 
@@ -506,5 +516,19 @@ mod test {
         }
         assert_eq!(foo, 2);
         assert_eq!(bar, 2);
+    }
+
+    #[test]
+    fn clear() {
+        let mut v = Vector::from(&[1, 2, 3]);
+        assert_eq!(v.capacity(), 3);
+        assert_eq!(v.len(), 3);
+        assert_eq!(&*v, &[1, 2, 3]);
+
+        // clear the vec
+        v.clear();
+        assert!(v.is_empty());
+        assert_eq!(v.capacity(), 0);
+        assert_eq!(&*v, &[]);
     }
 }

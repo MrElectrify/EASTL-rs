@@ -3,7 +3,7 @@ name = "eastl-rs"
 authors = ["Andrew Buck"]
 description = "EASTL binary-compatible Rust implementations"
 documentation = "https://docs.rs/crate/eastl-rs"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2021"
 license-file = "LICENSE"
 readme = "README.md"
@@ -14,4 +14,4 @@ keywords = ["EASTL", "STL"]
 superslice = "1.0"
 
 [dev-dependencies]
-memoffset = "0.6.5"
+memoffset = "0.8"
