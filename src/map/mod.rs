@@ -129,3 +129,13 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> Map<K, V, C, A> {
         self.inner.remove_entry(key)
     }
 }
+
+unsafe impl<K: Eq + Send, V: Send, C: Compare<K> + Send, A: Allocator + Send> Send
+    for Map<K, V, C, A>
+{
+}
+
+unsafe impl<K: Eq + Sync, V: Sync, C: Compare<K> + Sync, A: Allocator + Sync> Sync
+    for Map<K, V, C, A>
+{
+}
