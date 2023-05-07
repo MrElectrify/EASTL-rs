@@ -7,8 +7,8 @@ use std::marker::PhantomData;
 /// sake. They cannot actually be used to iterate.
 #[repr(C)]
 pub struct CompatIter<'a, K: Eq + 'a, V: 'a> {
-    bucket_ptr: *const *const Node<K, V>,
     node_ptr: *mut Node<K, V>,
+    bucket_ptr: *const *const Node<K, V>,
     _marker: PhantomData<&'a (K, V)>,
 }
 
@@ -18,8 +18,8 @@ pub struct CompatIter<'a, K: Eq + 'a, V: 'a> {
 /// sake. They cannot actually be used to iterate.
 #[repr(C)]
 pub struct CompatIterMut<'a, K: Eq + 'a, V: 'a> {
-    bucket_ptr: *const *mut Node<K, V>,
     node_ptr: *mut Node<K, V>,
+    bucket_ptr: *const *mut Node<K, V>,
     _marker: PhantomData<&'a (K, V)>,
 }
 
@@ -47,16 +47,16 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
     fn into_compat(self) -> (CompatIter<'a, K, V>, CompatIter<'a, K, V>) {
         (
             CompatIter::<'a, K, V> {
-                bucket_ptr: self.bucket_iter.as_slice().as_ptr() as *const *const Node<K, V>,
                 node_ptr: self.node_ptr,
+                bucket_ptr: self.bucket_iter.as_slice().as_ptr() as *const *const Node<K, V>,
                 _marker: PhantomData::default(),
             },
             CompatIter::<'a, K, V> {
+                node_ptr: std::ptr::null_mut(),
                 bucket_ptr: unsafe {
                     (self.bucket_iter.as_slice().as_ptr() as *const *const Node<K, V>)
                         .add(self.bucket_iter.as_slice().len())
                 },
-                node_ptr: std::ptr::null_mut(),
                 _marker: PhantomData::default(),
             },
         )
@@ -72,17 +72,17 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
     unsafe fn into_compat_mut(self) -> (CompatIterMut<'a, K, V>, CompatIterMut<'a, K, V>) {
         (
             CompatIterMut::<'a, K, V> {
-                bucket_ptr: self.bucket_iter.as_slice().as_ptr(),
                 node_ptr: self.node_ptr,
+                bucket_ptr: self.bucket_iter.as_slice().as_ptr(),
                 _marker: PhantomData::default(),
             },
             CompatIterMut::<'a, K, V> {
+                node_ptr: std::ptr::null_mut(),
                 bucket_ptr: self
                     .bucket_iter
                     .as_slice()
                     .as_ptr()
                     .add(self.bucket_iter.as_slice().len()),
-                node_ptr: std::ptr::null_mut(),
                 _marker: PhantomData::default(),
             },
         )
@@ -127,12 +127,12 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
     /// `end`: The ending compatibility iterator
     unsafe fn from_compat_mut(begin: CompatIterMut<K, V>, end: CompatIterMut<K, V>) -> Self {
         Self {
+            node_ptr: begin.node_ptr,
             bucket_iter: std::slice::from_raw_parts(
                 begin.bucket_ptr,
                 end.bucket_ptr.offset_from(begin.bucket_ptr) as usize,
             )
             .iter(),
-            node_ptr: begin.node_ptr,
         }
     }
 
@@ -145,8 +145,8 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
     /// hash table
     fn new(buckets: &'a [*mut Node<K, V>]) -> Self {
         let mut new_iter = Self {
-            bucket_iter: buckets.iter(),
             node_ptr: std::ptr::null_mut(),
+            bucket_iter: buckets.iter(),
         };
         // find the first next node
         new_iter.node_ptr = new_iter.next_bucket().unwrap_or_else(std::ptr::null_mut);

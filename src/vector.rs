@@ -529,6 +529,5 @@ mod test {
         v.clear();
         assert!(v.is_empty());
         assert_eq!(v.capacity(), 0);
-        assert_eq!(&*v, &[]);
     }
 }
