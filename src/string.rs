@@ -164,6 +164,14 @@ impl<A: Allocator> AsRef<str> for String<A> {
     }
 }
 
+impl<A: Allocator + Clone> Clone for String<A> {
+    fn clone(&self) -> Self {
+        Self {
+            vec: self.vec.clone(),
+        }
+    }
+}
+
 impl<A: Allocator> Debug for String<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"{}\"", self.as_str())

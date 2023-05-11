@@ -277,6 +277,12 @@ impl<T, A: Allocator> AsRef<[T]> for Vector<T, A> {
     }
 }
 
+impl<T: Clone, A: Allocator + Clone> Clone for Vector<T, A> {
+    fn clone(&self) -> Self {
+        unsafe { Self::from_in(self.as_slice(), self.allocator.clone()) }
+    }
+}
+
 impl<T: Debug, A: Allocator> Debug for Vector<T, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{:?}", &self.as_ref()))
