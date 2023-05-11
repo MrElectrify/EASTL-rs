@@ -1,8 +1,10 @@
 use std::marker::PhantomData;
 
+#[cfg(test)]
+use crate::allocator::DefaultAllocator;
 use crate::equals::{EqualTo, Equals};
 use crate::{
-    allocator::{Allocator, DefaultAllocator},
+    allocator::Allocator,
     hash::{DefaultHash, Hash},
 };
 
@@ -16,15 +18,15 @@ pub mod iter;
 pub mod node;
 mod rehash_policy;
 
+/// Hash table with the default allocator.
+#[cfg(test)]
+pub type DefaultHashTable<K, V, H = DefaultHash<K>, E = EqualTo<K>> =
+    HashTable<K, V, DefaultAllocator, H, E>;
+
 /// A base hashtable used to support hash maps and sets
 #[repr(C)]
-pub struct HashTable<
-    K: Eq,
-    V,
-    H: Hash<K> = DefaultHash<K>,
-    E: Equals<K> = EqualTo<K>,
-    A: Allocator = DefaultAllocator,
-> {
+pub struct HashTable<K: Eq, V, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equals<K> = EqualTo<K>>
+{
     /// The C++ object has some key extractor functor here
     /// that we don't need
     _pad: u8,
@@ -38,17 +40,17 @@ pub struct HashTable<
 
 static EMPTY_BUCKET_ARR: [usize; 2] = [0; 2];
 
-impl<K: Eq, V> HashTable<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, V, A: Allocator + Default> HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
     /// Creates an empty hashtable
     pub fn new() -> Self {
-        unsafe { Self::new_in(DefaultAllocator::default()) }
+        unsafe { Self::new_in(A::default()) }
     }
 }
 
-impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashTable<K, V, H, E, A> {
+impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> {
     /// Clears the hash table, removing all key-value pairs
     pub fn clear(&mut self) {
         self.free_buckets();
@@ -361,7 +363,7 @@ impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashTable<K, V, H, E, A> 
     }
 }
 
-impl<K: Eq, V> Default for HashTable<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, V, A: Allocator + Default> Default for HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -370,14 +372,14 @@ where
     }
 }
 
-impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> Drop for HashTable<K, V, H, E, A> {
+impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Drop for HashTable<K, V, A, H, E> {
     fn drop(&mut self) {
         self.free_buckets();
     }
 }
 
-impl<K: Eq, V> FromIterator<(K, V)>
-    for HashTable<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, V, A: Allocator + Default> FromIterator<(K, V)>
+    for HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -390,61 +392,61 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, E: Equals<K>, A: Allocator + Send> Send
-    for HashTable<K, V, H, E, A>
+unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
+    for HashTable<K, V, A, H, E>
 {
 }
-unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, E: Equals<K>, A: Allocator + Sync> Sync
-    for HashTable<K, V, H, E, A>
+unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
+    for HashTable<K, V, A, H, E>
 {
 }
 
 #[cfg(test)]
 mod test {
+
     use memoffset::offset_of;
 
     use crate::hash::{DefaultHash, Hash};
-
-    use super::HashTable;
+    use crate::internal::hash_table::DefaultHashTable;
 
     #[test]
     fn layout() {
         assert_eq!(
-            offset_of!(HashTable<u32, u32>, bucket_array),
+            offset_of!(DefaultHashTable<u32, u32>, bucket_array),
             std::mem::size_of::<usize>()
         );
         assert_eq!(
-            offset_of!(HashTable<u32, u32>, bucket_count),
+            offset_of!(DefaultHashTable<u32, u32>, bucket_count),
             std::mem::size_of::<usize>() * 2
         );
         assert_eq!(
-            offset_of!(HashTable<u32, u32>, element_count),
+            offset_of!(DefaultHashTable<u32, u32>, element_count),
             std::mem::size_of::<usize>() * 2 + std::mem::size_of::<u32>()
         );
         assert_eq!(
-            offset_of!(HashTable<u32, u32>, rehash_policy),
+            offset_of!(DefaultHashTable<u32, u32>, rehash_policy),
             std::mem::size_of::<usize>() * 3
         );
         assert_eq!(
-            offset_of!(HashTable<u32, u32>, allocator),
+            offset_of!(DefaultHashTable<u32, u32>, allocator),
             std::mem::size_of::<usize>() * 4 + std::mem::size_of::<u32>()
         );
         assert_eq!(
-            std::mem::size_of::<HashTable<u32, u32>>(),
+            std::mem::size_of::<DefaultHashTable<u32, u32>>(),
             std::mem::size_of::<usize>() * 5
         );
     }
 
     #[test]
     fn default() {
-        let ht: HashTable<u32, u32> = HashTable::default();
+        let ht: DefaultHashTable<u32, u32> = DefaultHashTable::default();
         assert!(ht.get(&5).is_none());
         assert!(ht.is_empty());
     }
 
     #[test]
     fn insert() {
-        let mut ht = HashTable::new();
+        let mut ht = DefaultHashTable::new();
         ht.insert(5, 6);
         ht.insert(6, 7);
         ht.insert(4, 7);
@@ -457,7 +459,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut ht = HashTable::new();
+        let mut ht = DefaultHashTable::new();
         ht.insert(6, 7);
         assert_eq!(ht.remove(&6), Some(7));
         assert!(ht.is_empty());
@@ -466,7 +468,7 @@ mod test {
 
     #[test]
     fn clear() {
-        let mut ht = HashTable::new();
+        let mut ht = DefaultHashTable::new();
         ht.insert(1, 2);
         ht.insert(2, 3);
         ht.insert(3, 4);
@@ -476,7 +478,7 @@ mod test {
 
     #[test]
     fn from_iter() {
-        let mut ht: HashTable<u32, u32> = [(1, 2), (2, 3), (3, 4)].into_iter().collect();
+        let mut ht: DefaultHashTable<u32, u32> = [(1, 2), (2, 3), (3, 4)].into_iter().collect();
         assert_eq!(ht.len(), 3);
         assert_eq!(ht.get(&2), Some((&2, &3)));
         if let Some(v) = ht.get_mut(&3) {
@@ -516,7 +518,7 @@ mod test {
         let mut baz = 1;
         let mut bag = 1;
         {
-            let mut ht = HashTable::new();
+            let mut ht = DefaultHashTable::new();
             ht.insert(Test { a: 1, r: &mut foo }, None);
             ht.insert(Test { a: 2, r: &mut bar }, Some(Test { a: 3, r: &mut baz }));
             ht.remove(&Test { a: 2, r: &mut bag });
@@ -540,7 +542,7 @@ mod test {
 
     #[test]
     fn collisions() {
-        let ht: HashTable<A, u32> = (0..11).map(|n| (A { a: n }, n)).collect();
+        let ht: DefaultHashTable<A, u32> = (0..11).map(|n| (A { a: n }, n)).collect();
         for i in 0..11 {
             assert_eq!(ht.get(&A { a: i }), Some((&A { a: i }, &i)));
         }

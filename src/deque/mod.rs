@@ -3,9 +3,12 @@ use crate::deque::iter::{CompatIterMut, Iter, IterMut};
 
 pub mod iter;
 
+/// Deque with the default allocator.
+pub type DefaultDeque<'a, V> = Deque<'a, V, DefaultAllocator>;
+
 /// A double-ended queue implemented with multiple arrays
 #[repr(C)]
-pub struct Deque<'a, T: 'a, A: Allocator = DefaultAllocator> {
+pub struct Deque<'a, T: 'a, A: Allocator> {
     ptr_array: *mut *mut T,
     ptr_array_size: usize,
     begin_it: CompatIterMut<'a, T>,
@@ -16,10 +19,10 @@ pub struct Deque<'a, T: 'a, A: Allocator = DefaultAllocator> {
 unsafe impl<'a, T: Send + 'a, A: Allocator + Send> Send for Deque<'a, T, A> {}
 unsafe impl<'a, T: Sync + 'a, A: Allocator + Sync> Sync for Deque<'a, T, A> {}
 
-impl<'a, T: 'a> Deque<'a, T, DefaultAllocator> {
+impl<'a, T: 'a, A: Allocator + Default> Deque<'a, T, A> {
     /// Creates a new deque in the default allocator
     pub fn new() -> Self {
-        unsafe { Self::new_in(DefaultAllocator::default()) }
+        unsafe { Self::new_in(A::default()) }
     }
 }
 
@@ -373,7 +376,7 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
     }
 }
 
-impl<'a, T: 'a> Default for Deque<'a, T, DefaultAllocator> {
+impl<'a, T: 'a, A: Allocator + Default> Default for Deque<'a, T, A> {
     fn default() -> Self {
         Self::new()
     }
@@ -402,7 +405,7 @@ impl<'a, T: 'a, A: Allocator> Drop for Deque<'a, T, A> {
     }
 }
 
-impl<'a, T: 'a> FromIterator<T> for Deque<'a, T, DefaultAllocator> {
+impl<'a, T: 'a, A: Allocator + Default> FromIterator<T> for Deque<'a, T, A> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut d = Self::new();
         iter.into_iter().for_each(|elem| d.push_back(elem));
@@ -412,37 +415,38 @@ impl<'a, T: 'a> FromIterator<T> for Deque<'a, T, DefaultAllocator> {
 
 #[cfg(test)]
 mod test {
-    use crate::deque::Deque;
+    
+    use crate::deque::{DefaultDeque};
     use memoffset::offset_of;
 
     #[test]
     fn layout() {
-        assert_eq!(offset_of!(Deque::<u32>, ptr_array), 0);
+        assert_eq!(offset_of!(DefaultDeque::<u32>, ptr_array), 0);
         assert_eq!(
-            offset_of!(Deque::<u32>, ptr_array_size),
+            offset_of!(DefaultDeque::<u32>, ptr_array_size),
             std::mem::size_of::<usize>()
         );
         assert_eq!(
-            offset_of!(Deque::<u32>, begin_it),
+            offset_of!(DefaultDeque::<u32>, begin_it),
             std::mem::size_of::<usize>() * 2
         );
         assert_eq!(
-            offset_of!(Deque::<u32>, end_it),
+            offset_of!(DefaultDeque::<u32>, end_it),
             std::mem::size_of::<usize>() * 6
         );
         assert_eq!(
-            offset_of!(Deque::<u32>, allocator),
+            offset_of!(DefaultDeque::<u32>, allocator),
             std::mem::size_of::<usize>() * 10
         );
         assert_eq!(
-            std::mem::size_of::<Deque<u32>>(),
+            std::mem::size_of::<DefaultDeque<u32>>(),
             std::mem::size_of::<usize>() * 11
         )
     }
 
     #[test]
     fn initial_state() {
-        let d = Deque::<u32>::default();
+        let d = DefaultDeque::<u32>::default();
         assert!(!d.ptr_array.is_null());
         assert_eq!(d.ptr_array_size, 8);
         assert_eq!(d.begin_it.begin, unsafe { *d.ptr_array.add(3) });
@@ -455,7 +459,7 @@ mod test {
 
     #[test]
     fn push_front() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
 
         d.push_front(0);
         assert!(!d.is_empty());
@@ -474,7 +478,7 @@ mod test {
 
     #[test]
     fn push_back() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
 
         d.push_back(0);
         assert!(!d.is_empty());
@@ -493,7 +497,7 @@ mod test {
 
     #[test]
     fn push_front_and_back() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
 
         d.push_front(0);
         d.push_back(1);
@@ -510,7 +514,7 @@ mod test {
 
     #[test]
     fn from_iter() {
-        let d: Deque<u32> = (0..10).into_iter().collect();
+        let d: DefaultDeque<u32> = (0..10).collect();
 
         assert!(!d.is_empty());
         assert_eq!(d.len(), 10);
@@ -518,7 +522,7 @@ mod test {
 
     #[test]
     fn front() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
         assert_eq!(d.front(), None);
 
         d.push_front(1);
@@ -533,7 +537,7 @@ mod test {
 
     #[test]
     fn back() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
         assert_eq!(d.back(), None);
 
         d.push_back(1);
@@ -548,7 +552,7 @@ mod test {
 
     #[test]
     fn realloc_ptr_back() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
 
         for i in 0..512 {
             d.push_back(i);
@@ -566,7 +570,7 @@ mod test {
 
     #[test]
     fn realloc_ptr_front() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
 
         for i in 0..512 {
             d.push_front(i);

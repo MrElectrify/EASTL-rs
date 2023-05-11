@@ -1,6 +1,7 @@
+use crate::allocator::DefaultAllocator;
 use crate::equals::{EqualTo, Equals};
 use crate::{
-    allocator::{Allocator, DefaultAllocator},
+    allocator::Allocator,
     hash::{DefaultHash, Hash},
     internal::hash_table::HashTable,
 };
@@ -10,18 +11,16 @@ use self::iter::Iter;
 
 pub mod iter;
 
+/// Hash set with the default allocator.
+pub type DefaultHashSet<K, H = DefaultHash<K>, E = EqualTo<K>> = HashSet<K, DefaultAllocator, H, E>;
+
 /// A hash set that can store and fetch keys in O(1) time
 #[repr(C)]
-pub struct HashSet<
-    K: Eq,
-    H: Hash<K> = DefaultHash<K>,
-    E: Equals<K> = EqualTo<K>,
-    A: Allocator = DefaultAllocator,
-> {
-    hash_table: HashTable<K, (), H, E, A>,
+pub struct HashSet<K: Eq, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equals<K> = EqualTo<K>> {
+    hash_table: HashTable<K, (), A, H, E>,
 }
 
-impl<K: Eq> HashSet<K, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, A: Allocator + Default> HashSet<K, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -33,7 +32,7 @@ where
     }
 }
 
-impl<K: Eq, H: Hash<K>, E: Equals<K>, A: Allocator> HashSet<K, H, E, A> {
+impl<K: Eq, A: Allocator, H: Hash<K>, E: Equals<K>> HashSet<K, A, H, E> {
     /// Clears the hash set, removing all keys
     pub fn clear(&mut self) {
         self.hash_table.clear()
@@ -104,7 +103,7 @@ impl<K: Eq, H: Hash<K>, E: Equals<K>, A: Allocator> HashSet<K, H, E, A> {
     }
 }
 
-impl<K: Debug + Eq, H: Hash<K>, E: Equals<K>, A: Allocator> Debug for HashSet<K, H, E, A> {
+impl<K: Debug + Eq, A: Allocator, H: Hash<K>, E: Equals<K>> Debug for HashSet<K, A, H, E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -117,7 +116,7 @@ impl<K: Debug + Eq, H: Hash<K>, E: Equals<K>, A: Allocator> Debug for HashSet<K,
     }
 }
 
-impl<K: Eq> Default for HashSet<K, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, A: Allocator + Default> Default for HashSet<K, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -126,7 +125,7 @@ where
     }
 }
 
-impl<K: Eq> FromIterator<K> for HashSet<K, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, A: Allocator + Default> FromIterator<K> for HashSet<K, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -137,25 +136,24 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, H: Hash<K>, E: Equals<K>, A: Allocator + Send> Send
-    for HashSet<K, H, E, A>
+unsafe impl<K: Eq + Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
+    for HashSet<K, A, H, E>
 {
 }
-unsafe impl<K: Eq + Sync, H: Hash<K>, E: Equals<K>, A: Allocator + Sync> Sync
-    for HashSet<K, H, E, A>
+unsafe impl<K: Eq + Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
+    for HashSet<K, A, H, E>
 {
 }
 
 #[cfg(test)]
 mod test {
+    use crate::hash_set::DefaultHashSet;
     use std::collections::BTreeSet;
-
-    use super::HashSet;
 
     #[test]
     fn iter() {
         let reference_map: BTreeSet<u32> = (0..10).map(|n| n * 10).collect();
-        let hm: HashSet<u32> = reference_map.iter().copied().collect();
+        let hm: DefaultHashSet<u32> = reference_map.iter().copied().collect();
         assert_eq!(hm.iter().copied().collect::<BTreeSet<u32>>(), reference_map);
     }
 }

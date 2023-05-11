@@ -279,13 +279,12 @@ unsafe impl<K: Eq + Sync, V: Sync, C: Compare<K> + Sync, A: Allocator + Sync> Sy
 
 #[cfg(test)]
 mod test {
-    use crate::vector::Vector;
     use crate::vector_map::VectorMap;
 
     #[test]
     fn layout() {
         assert_eq!(
-            std::mem::size_of::<Vector<u32>>(),
+            std::mem::size_of::<VectorMap<u32, u32>>(),
             std::mem::size_of::<usize>() * 4
         );
     }
@@ -386,9 +385,8 @@ mod test {
     #[test]
     fn big_test() {
         let vec: VectorMap<_, _> = (0..50)
-            .into_iter()
             .map(|x| x * 2)
-            .chain((0..50).into_iter().map(|x| x * 2 + 1))
+            .chain((0..50).map(|x| x * 2 + 1))
             .map(|x| (x, x + 2))
             .collect();
 

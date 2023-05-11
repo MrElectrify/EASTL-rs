@@ -1,5 +1,5 @@
 use crate::{
-    allocator::{Allocator, DefaultAllocator},
+    allocator::Allocator,
     compare::{Compare, Less},
     internal::rb_tree::RBTree,
 };
@@ -9,11 +9,11 @@ use crate::{
 /// need ordering, look at `HashSet`, which takes O(1) time
 /// for those operations
 #[derive(Default)]
-pub struct Set<K: Eq, C: Compare<K> = Less<K>, A: Allocator = DefaultAllocator> {
-    inner: RBTree<K, (), C, A>,
+pub struct Set<K: Eq, A: Allocator, C: Compare<K> = Less<K>> {
+    inner: RBTree<K, (), A, C>,
 }
 
-impl<K: Eq, C: Compare<K> + Default, A: Allocator> Set<K, C, A> {
+impl<K: Eq, A: Allocator, C: Compare<K> + Default> Set<K, A, C> {
     /// Constructs a set using a specified allocator
     ///
     /// # Arguments
@@ -26,7 +26,7 @@ impl<K: Eq, C: Compare<K> + Default, A: Allocator> Set<K, C, A> {
     }
 }
 
-impl<K: Eq, C: Compare<K>, A: Allocator + Default> Set<K, C, A> {
+impl<K: Eq, A: Allocator + Default, C: Compare<K>> Set<K, A, C> {
     /// Constructs a set using a specified comparator
     ///
     /// # Arguments
@@ -39,7 +39,7 @@ impl<K: Eq, C: Compare<K>, A: Allocator + Default> Set<K, C, A> {
     }
 }
 
-impl<K: Eq, C: Compare<K>, A: Allocator> Set<K, C, A> {
+impl<K: Eq, A: Allocator, C: Compare<K>> Set<K, A, C> {
     /// Constructs a set using a specified allocator
     /// and comparator
     ///

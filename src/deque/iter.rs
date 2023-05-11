@@ -1,3 +1,4 @@
+use crate::allocator::Allocator;
 use crate::deque::Deque;
 use crate::queue::Queue;
 use std::marker::PhantomData;
@@ -328,11 +329,11 @@ impl<'a, T: 'a> DoubleEndedIterator for IterMut<'a, T> {
 }
 
 /// A consuming iterator
-pub struct IntoIter<'a, T: 'a> {
-    deque: Deque<'a, T>,
+pub struct IntoIter<'a, T: 'a, A: Allocator> {
+    deque: Deque<'a, T, A>,
 }
 
-impl<'a, T: 'a> Iterator for IntoIter<'a, T> {
+impl<'a, T: 'a, A: Allocator> Iterator for IntoIter<'a, T, A> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -340,24 +341,24 @@ impl<'a, T: 'a> Iterator for IntoIter<'a, T> {
     }
 }
 
-impl<'a, T: 'a> DoubleEndedIterator for IntoIter<'a, T> {
+impl<'a, T: 'a, A: Allocator> DoubleEndedIterator for IntoIter<'a, T, A> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.deque.pop_back()
     }
 }
 
-impl<'a, T: 'a> IntoIterator for Deque<'a, T> {
+impl<'a, T: 'a, A: Allocator> IntoIterator for Deque<'a, T, A> {
     type Item = T;
-    type IntoIter = IntoIter<'a, T>;
+    type IntoIter = IntoIter<'a, T, A>;
 
     fn into_iter(self) -> Self::IntoIter {
         Self::IntoIter { deque: self }
     }
 }
 
-impl<'a, T: 'a> IntoIterator for Queue<'a, T> {
+impl<'a, T: 'a, A: Allocator> IntoIterator for Queue<'a, T, A> {
     type Item = T;
-    type IntoIter = IntoIter<'a, T>;
+    type IntoIter = IntoIter<'a, T, A>;
 
     fn into_iter(self) -> Self::IntoIter {
         Self::IntoIter {
@@ -368,8 +369,9 @@ impl<'a, T: 'a> IntoIterator for Queue<'a, T> {
 
 #[cfg(test)]
 mod test {
+    
     use crate::deque::iter::CompatIterMut;
-    use crate::deque::Deque;
+    use crate::deque::{DefaultDeque};
     use memoffset::offset_of;
 
     #[test]
@@ -395,7 +397,7 @@ mod test {
 
     #[test]
     fn empty_iter() {
-        let d = Deque::<u32>::new();
+        let d = DefaultDeque::<u32>::new();
         let mut i = d.iter();
 
         assert_eq!(i.next(), None);
@@ -404,7 +406,7 @@ mod test {
 
     #[test]
     fn iter() {
-        let d: Deque<u32> = (0..10).into_iter().collect();
+        let d: DefaultDeque<u32> = (0..10).collect();
         let mut i = d.iter();
 
         for elem in 0..5 {
@@ -420,7 +422,7 @@ mod test {
 
     #[test]
     fn iter_across_borders() {
-        let mut d = Deque::new();
+        let mut d = DefaultDeque::new();
 
         // make sure front and back have values so we go over boundaries
         for i in 0..70 {

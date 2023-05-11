@@ -1,5 +1,5 @@
 use crate::{
-    allocator::{Allocator, DefaultAllocator},
+    allocator::Allocator,
     compare::{Compare, Less},
 };
 
@@ -8,7 +8,7 @@ use self::node::Node;
 mod node;
 
 #[repr(C)]
-pub struct RBTree<K: Eq, V, C: Compare<K> = Less<K>, A: Allocator = DefaultAllocator> {
+pub struct RBTree<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
     /// A 1-size functor in C++
     compare: C,
     /// Real EASTL uses a node without a K/V pair
@@ -22,7 +22,7 @@ pub struct RBTree<K: Eq, V, C: Compare<K> = Less<K>, A: Allocator = DefaultAlloc
     allocator: A,
 }
 
-impl<K: Eq, V, C: Compare<K> + Default, A: Allocator + Default> RBTree<K, V, C, A> {
+impl<K: Eq, V, A: Allocator + Default, C: Compare<K> + Default> RBTree<K, V, A, C> {
     /// Returns a default new red-black tree
     fn new() -> Self {
         Self {
@@ -36,19 +36,19 @@ impl<K: Eq, V, C: Compare<K> + Default, A: Allocator + Default> RBTree<K, V, C, 
     }
 }
 
-impl<K: Eq, V, C: Compare<K> + Default, A: Allocator + Default> Default for RBTree<K, V, C, A> {
+impl<K: Eq, V, A: Allocator + Default, C: Compare<K> + Default> Default for RBTree<K, V, A, C> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<K: Eq, V, C: Compare<K>, A: Allocator> Drop for RBTree<K, V, C, A> {
+impl<K: Eq, V, A: Allocator, C: Compare<K>> Drop for RBTree<K, V, A, C> {
     fn drop(&mut self) {
         self.free_nodes()
     }
 }
 
-impl<K: Eq, V, C: Compare<K> + Default, A: Allocator> RBTree<K, V, C, A> {
+impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> RBTree<K, V, A, C> {
     /// Constructs a red-black tree using a specified allocator
     ///
     /// # Arguments
@@ -66,7 +66,7 @@ impl<K: Eq, V, C: Compare<K> + Default, A: Allocator> RBTree<K, V, C, A> {
     }
 }
 
-impl<K: Eq, V, C: Compare<K>, A: Allocator + Default> RBTree<K, V, C, A> {
+impl<K: Eq, V, A: Allocator + Default, C: Compare<K>> RBTree<K, V, A, C> {
     /// Constructs a red-black tree using a specified comparator
     ///
     /// # Arguments
@@ -84,7 +84,7 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator + Default> RBTree<K, V, C, A> {
     }
 }
 
-impl<K: Eq, V, C: Compare<K>, A: Allocator> RBTree<K, V, C, A> {
+impl<K: Eq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
     /// Constructs a red-black tree using a specified allocator
     /// and comparator
     ///
@@ -264,41 +264,45 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> RBTree<K, V, C, A> {
 
 #[cfg(test)]
 mod test {
+    use crate::allocator::DefaultAllocator;
+    use crate::compare::{Less};
     use memoffset::offset_of;
 
     use super::RBTree;
 
+    type DefaultRBTree<K, V, C = Less<K>> = RBTree<K, V, DefaultAllocator, C>;
+
     #[test]
     fn layout() {
         assert_eq!(
-            offset_of!(RBTree<u32, u32>, begin),
+            offset_of!(DefaultRBTree<u32, u32>, begin),
             std::mem::size_of::<usize>()
         );
         assert_eq!(
-            offset_of!(RBTree<u32, u32>, end),
+            offset_of!(DefaultRBTree<u32, u32>, end),
             std::mem::size_of::<usize>() * 2
         );
         assert_eq!(
-            offset_of!(RBTree<u32, u32>, parent),
+            offset_of!(DefaultRBTree<u32, u32>, parent),
             std::mem::size_of::<usize>() * 3
         );
         assert_eq!(
-            offset_of!(RBTree<u32, u32>, size),
+            offset_of!(DefaultRBTree<u32, u32>, size),
             std::mem::size_of::<usize>() * 4
         );
         assert_eq!(
-            offset_of!(RBTree<u32, u32>, allocator),
+            offset_of!(DefaultRBTree<u32, u32>, allocator),
             std::mem::size_of::<usize>() * 5
         );
         assert_eq!(
-            std::mem::size_of::<RBTree<u32, u32>>(),
+            std::mem::size_of::<DefaultRBTree<u32, u32>>(),
             std::mem::size_of::<usize>() * 6
         );
     }
 
     #[test]
     fn default() {
-        let rb_tree = RBTree::<u32, u32>::default();
+        let rb_tree = DefaultRBTree::<u32, u32>::default();
         assert_eq!(rb_tree.begin, std::ptr::null_mut());
         assert_eq!(rb_tree.end, std::ptr::null_mut());
         assert_eq!(rb_tree.parent, std::ptr::null_mut());

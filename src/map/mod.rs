@@ -1,5 +1,5 @@
 use crate::{
-    allocator::{Allocator, DefaultAllocator},
+    allocator::Allocator,
     compare::{Compare, Less},
     internal::rb_tree::RBTree,
 };
@@ -9,11 +9,11 @@ use crate::{
 /// need ordering, look at `HashMap`, which takes O(1) time
 /// for those operations
 #[derive(Default)]
-pub struct Map<K: Eq, V, C: Compare<K> = Less<K>, A: Allocator = DefaultAllocator> {
-    inner: RBTree<K, V, C, A>,
+pub struct Map<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
+    inner: RBTree<K, V, A, C>,
 }
 
-impl<K: Eq, V, C: Compare<K> + Default, A: Allocator> Map<K, V, C, A> {
+impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> Map<K, V, A, C> {
     /// Constructs a map using a specified allocator
     ///
     /// # Arguments
@@ -26,7 +26,7 @@ impl<K: Eq, V, C: Compare<K> + Default, A: Allocator> Map<K, V, C, A> {
     }
 }
 
-impl<K: Eq, V, C: Compare<K>, A: Allocator + Default> Map<K, V, C, A> {
+impl<K: Eq, V, A: Allocator + Default, C: Compare<K>> Map<K, V, A, C> {
     /// Constructs a map using a specified comparator
     ///
     /// # Arguments
@@ -39,7 +39,7 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator + Default> Map<K, V, C, A> {
     }
 }
 
-impl<K: Eq, V, C: Compare<K>, A: Allocator> Map<K, V, C, A> {
+impl<K: Eq, V, A: Allocator, C: Compare<K>> Map<K, V, A, C> {
     /// Constructs a map using a specified allocator
     /// and comparator
     ///
@@ -130,12 +130,12 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> Map<K, V, C, A> {
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, C: Compare<K> + Send, A: Allocator + Send> Send
-    for Map<K, V, C, A>
+unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, C: Compare<K> + Send> Send
+    for Map<K, V, A, C>
 {
 }
 
-unsafe impl<K: Eq + Sync, V: Sync, C: Compare<K> + Sync, A: Allocator + Sync> Sync
-    for Map<K, V, C, A>
+unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, C: Compare<K> + Sync> Sync
+    for Map<K, V, A, C>
 {
 }

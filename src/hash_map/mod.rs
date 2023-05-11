@@ -1,6 +1,7 @@
+use crate::allocator::DefaultAllocator;
 use crate::equals::{EqualTo, Equals};
 use crate::{
-    allocator::{Allocator, DefaultAllocator},
+    allocator::Allocator,
     hash::{DefaultHash, Hash},
     internal::hash_table::HashTable,
 };
@@ -10,19 +11,17 @@ use self::iter::{Iter, IterMut};
 
 pub mod iter;
 
+/// Hash map with the default allocator.
+pub type DefaultHashMap<K, V, H = DefaultHash<K>, E = EqualTo<K>> =
+    HashMap<K, V, DefaultAllocator, H, E>;
+
 /// A hash map that can store and fetch values from a key in O(1) time
 #[repr(C)]
-pub struct HashMap<
-    K: Eq,
-    V,
-    H: Hash<K> = DefaultHash<K>,
-    E: Equals<K> = EqualTo<K>,
-    A: Allocator = DefaultAllocator,
-> {
-    hash_table: HashTable<K, V, H, E, A>,
+pub struct HashMap<K: Eq, V, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equals<K> = EqualTo<K>> {
+    hash_table: HashTable<K, V, A, H, E>,
 }
 
-impl<K: Eq, V> HashMap<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, V, A: Allocator + Default> HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -34,7 +33,7 @@ where
     }
 }
 
-impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashMap<K, V, H, E, A> {
+impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashMap<K, V, A, H, E> {
     /// Clears the hash map, removing all key-value pairs
     pub fn clear(&mut self) {
         self.hash_table.clear()
@@ -129,8 +128,8 @@ impl<K: Eq, V, H: Hash<K>, E: Equals<K>, A: Allocator> HashMap<K, V, H, E, A> {
     }
 }
 
-impl<K: Debug + Eq, V: Debug, H: Hash<K>, E: Equals<K>, A: Allocator> Debug
-    for HashMap<K, V, H, E, A>
+impl<K: Debug + Eq, V: Debug, A: Allocator, H: Hash<K>, E: Equals<K>> Debug
+    for HashMap<K, V, A, H, E>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -144,7 +143,7 @@ impl<K: Debug + Eq, V: Debug, H: Hash<K>, E: Equals<K>, A: Allocator> Debug
     }
 }
 
-impl<K: Eq, V> Default for HashMap<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, V, A: Allocator + Default> Default for HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -153,7 +152,8 @@ where
     }
 }
 
-impl<K: Eq, V> FromIterator<(K, V)> for HashMap<K, V, DefaultHash<K>, EqualTo<K>, DefaultAllocator>
+impl<K: Eq, V, A: Allocator + Default> FromIterator<(K, V)>
+    for HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -164,26 +164,25 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, H: Hash<K>, E: Equals<K>, A: Allocator + Send> Send
-    for HashMap<K, V, H, E, A>
+unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
+    for HashMap<K, V, A, H, E>
 {
 }
-unsafe impl<K: Eq + Sync, V: Sync, H: Hash<K>, E: Equals<K>, A: Allocator + Sync> Sync
-    for HashMap<K, V, H, E, A>
+unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
+    for HashMap<K, V, A, H, E>
 {
 }
 
 #[cfg(test)]
 mod test {
+    use crate::hash_map::DefaultHashMap;
     use std::collections::BTreeMap;
-
-    use super::HashMap;
 
     #[test]
     fn iter() {
         let reference_map: BTreeMap<u32, u32> =
             (0..10).map(|n| n * 10).map(|n| (n, n + 2)).collect();
-        let hm: HashMap<u32, u32> = reference_map.iter().map(|(k, v)| (*k, *v)).collect();
+        let hm: DefaultHashMap<u32, u32> = reference_map.iter().map(|(k, v)| (*k, *v)).collect();
         assert_eq!(
             hm.iter()
                 .map(|(k, v)| (*k, *v))
@@ -196,7 +195,8 @@ mod test {
     fn iter_mut() {
         let mut reference_map: BTreeMap<u32, u32> =
             (0..10).map(|n| n * 10).map(|n| (n, n + 2)).collect();
-        let mut hm: HashMap<u32, u32> = reference_map.iter().map(|(k, v)| (*k, *v)).collect();
+        let mut hm: DefaultHashMap<u32, u32> =
+            reference_map.iter().map(|(k, v)| (*k, *v)).collect();
         reference_map.iter_mut().for_each(|(_, v)| *v *= 2);
         hm.iter_mut().for_each(|(_, v)| *v *= 2);
         assert_eq!(

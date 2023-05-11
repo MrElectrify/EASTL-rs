@@ -341,13 +341,13 @@ impl<'a, K: Eq + 'a, V: 'a> Iterator for IterMut<'a, K, V> {
 
 #[cfg(test)]
 mod test {
-    use crate::internal::hash_table::HashTable;
+    use crate::internal::hash_table::{DefaultHashTable};
 
     use super::RawIter;
 
     #[test]
     fn empty_iter() {
-        let ht = HashTable::<u32, u32>::new();
+        let ht = DefaultHashTable::<u32, u32>::new();
         let mut iter = RawIter::new(unsafe {
             std::slice::from_raw_parts(ht.bucket_array, ht.bucket_count as usize)
         });
@@ -357,9 +357,8 @@ mod test {
     #[test]
     fn iter() {
         let ht = (0..10)
-            .into_iter()
             .map(|n| (n, n))
-            .collect::<HashTable<u32, u32>>();
+            .collect::<DefaultHashTable<u32, u32>>();
         let mut iter = RawIter::new(unsafe {
             std::slice::from_raw_parts(ht.bucket_array, ht.bucket_count as usize)
         });
@@ -373,10 +372,9 @@ mod test {
     #[test]
     fn cloned() {
         let ht = (0..10)
-            .into_iter()
             .map(|n| n * 11)
             .map(|n| (n, n))
-            .collect::<HashTable<u32, u32>>();
+            .collect::<DefaultHashTable<u32, u32>>();
         let mut iter = RawIter::new(unsafe {
             std::slice::from_raw_parts(ht.bucket_array, ht.bucket_count as usize)
         });
@@ -396,10 +394,9 @@ mod test {
     #[test]
     fn compat_sanity() {
         let ht = (0..10)
-            .into_iter()
             .map(|n| n * 10)
             .map(|n| (n, n))
-            .collect::<HashTable<u32, u32>>();
+            .collect::<DefaultHashTable<u32, u32>>();
         let iter = RawIter::new(unsafe {
             std::slice::from_raw_parts(ht.bucket_array, ht.bucket_count as usize)
         });
@@ -415,10 +412,9 @@ mod test {
     #[test]
     fn compat_partial_use_sanity() {
         let ht = (0..10)
-            .into_iter()
             .map(|n| n * 10)
             .map(|n| (n, n))
-            .collect::<HashTable<u32, u32>>();
+            .collect::<DefaultHashTable<u32, u32>>();
         let mut iter = RawIter::new(unsafe {
             std::slice::from_raw_parts(ht.bucket_array, ht.bucket_count as usize)
         });

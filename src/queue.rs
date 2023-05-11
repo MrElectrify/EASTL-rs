@@ -2,16 +2,19 @@ use crate::allocator::{Allocator, DefaultAllocator};
 use crate::deque::iter::{Iter, IterMut};
 use crate::deque::Deque;
 
+/// Queue with the default allocator.
+pub type DefaultQueue<'a, V> = Queue<'a, V, DefaultAllocator>;
+
 /// A first-in, first-out data structure backed by a Deque
 #[repr(C)]
-pub struct Queue<'a, T: 'a, A: Allocator = DefaultAllocator> {
+pub struct Queue<'a, T: 'a, A: Allocator> {
     deque: Deque<'a, T, A>,
 }
 
 unsafe impl<'a, T: Send + 'a, A: Allocator + Send> Send for Queue<'a, T, A> {}
 unsafe impl<'a, T: Sync + 'a, A: Allocator + Sync> Sync for Queue<'a, T, A> {}
 
-impl<'a, T: 'a> Queue<'a, T, DefaultAllocator> {
+impl<'a, T: 'a, A: Allocator + Default> Queue<'a, T, A> {
     /// Creates a new empty queue
     fn new() -> Self {
         Self {
@@ -77,13 +80,13 @@ impl<'a, T: 'a, A: Allocator> Queue<'a, T, A> {
     }
 }
 
-impl<'a, T: 'a> Default for Queue<'a, T, DefaultAllocator> {
+impl<'a, T: 'a, A: Allocator + Default> Default for Queue<'a, T, A> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, T: 'a> FromIterator<T> for Queue<'a, T, DefaultAllocator> {
+impl<'a, T: 'a, A: Allocator + Default> FromIterator<T> for Queue<'a, T, A> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self {
             deque: Deque::from_iter(iter),
@@ -93,19 +96,19 @@ impl<'a, T: 'a> FromIterator<T> for Queue<'a, T, DefaultAllocator> {
 
 #[cfg(test)]
 mod test {
-    use crate::queue::Queue;
+    use crate::queue::DefaultQueue;
 
     #[test]
     fn layout() {
         assert_eq!(
-            std::mem::size_of::<Queue<u32>>(),
+            std::mem::size_of::<DefaultQueue<u32>>(),
             std::mem::size_of::<usize>() * 11
         );
     }
 
     #[test]
     fn push_pop() {
-        let mut q = Queue::new();
+        let mut q = DefaultQueue::new();
 
         assert!(q.is_empty());
         assert_eq!(q.len(), 0);
@@ -127,7 +130,7 @@ mod test {
 
     #[test]
     fn iter() {
-        let q: Queue<i32> = (0..256).collect();
+        let q: DefaultQueue<i32> = (0..256).collect();
 
         q.iter().zip(0..256).for_each(|(l, r)| assert_eq!(*l, r));
 

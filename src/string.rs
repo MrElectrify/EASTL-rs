@@ -5,19 +5,23 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use crate::allocator::DefaultAllocator;
 use crate::{
-    allocator::{Allocator, DefaultAllocator},
+    allocator::Allocator,
     hash::{DefaultHash, Hash},
     vector::Vector,
 };
 
+/// String with the default allocator;
+pub type DefaultString = String<DefaultAllocator>;
+
 /// `String` is what it sounds like, a string of characters.
 /// It's actually implemented internally as a vector
-pub struct String<A: Allocator = DefaultAllocator> {
+pub struct String<A: Allocator> {
     vec: Vector<u8, A>,
 }
 
-impl String<DefaultAllocator> {
+impl<A: Allocator + Default> String<A> {
     /// Creates a new empty string
     pub fn new() -> Self {
         Self { vec: Vector::new() }
@@ -166,7 +170,7 @@ impl<A: Allocator> Debug for String<A> {
     }
 }
 
-impl Default for String<DefaultAllocator> {
+impl<A: Allocator + Default> Default for String<A> {
     fn default() -> Self {
         Self::new()
     }
@@ -192,7 +196,7 @@ impl<A: Allocator> Display for String<A> {
     }
 }
 
-impl From<&str> for String<DefaultAllocator> {
+impl<A: Allocator + Default> From<&str> for String<A> {
     fn from(s: &str) -> Self {
         Self {
             vec: Vector::from(s.as_bytes()),
@@ -200,7 +204,7 @@ impl From<&str> for String<DefaultAllocator> {
     }
 }
 
-impl FromStr for String<DefaultAllocator> {
+impl<A: Allocator + Default> FromStr for String<A> {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -210,8 +214,8 @@ impl FromStr for String<DefaultAllocator> {
     }
 }
 
-impl Hash<String> for DefaultHash<String> {
-    fn hash(val: &String) -> usize {
+impl<A: Allocator> Hash<String<A>> for DefaultHash<String<A>> {
+    fn hash(val: &String<A>) -> usize {
         DefaultHash::hash(val.as_str())
     }
 }
@@ -224,6 +228,7 @@ mod test {
     use memoffset::offset_of;
 
     use crate::allocator::DefaultAllocator;
+    use crate::string::DefaultString;
 
     use super::String;
 
@@ -231,21 +236,21 @@ mod test {
     fn layout() {
         assert_eq!(offset_of!(String<DefaultAllocator>, vec), 0);
         assert_eq!(
-            std::mem::size_of::<String>(),
+            std::mem::size_of::<DefaultString>(),
             std::mem::size_of::<usize>() * 4
         )
     }
 
     #[test]
     fn from_str() {
-        let s = String::from("abc");
+        let s = DefaultString::from("abc");
         assert_eq!(s.as_str(), "abc");
         assert_eq!(s.capacity(), 3);
     }
 
     #[test]
     fn push_chars() {
-        let mut s = String::new();
+        let mut s = DefaultString::new();
         s.push('a');
         s.push('b');
         s.push('c');
@@ -255,14 +260,14 @@ mod test {
 
     #[test]
     fn pop_chars() {
-        let mut s = String::from("ab");
+        let mut s = DefaultString::from("ab");
         assert_eq!(s.pop(), Some('b'));
         assert_eq!(s.as_str(), "a");
     }
 
     #[test]
     fn insert() {
-        let mut s = String::from("ab");
+        let mut s = DefaultString::from("ab");
         s.insert(1, 'c');
         assert_eq!(s.as_str(), "acb");
         assert_eq!(s.capacity(), 4);
@@ -270,7 +275,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut s = String::from("ab");
+        let mut s = DefaultString::from("ab");
         assert_eq!(s.remove(1), Some('b'));
         assert_eq!(s.as_str(), "a");
     }

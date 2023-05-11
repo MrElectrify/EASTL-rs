@@ -7,11 +7,14 @@ use std::{
 
 use crate::allocator::{Allocator, DefaultAllocator};
 
+/// Vector with the default allocator.
+pub type DefaultVector<V> = Vector<V, DefaultAllocator>;
+
 /// `Vector` is synonymous to `Vec`, a dynamically-resizing array.
 /// The EASTL implementation consists of begin, end, and capacity pointers,
 /// as well as a following allocator
 #[repr(C)]
-pub struct Vector<T: Sized, A: Allocator = DefaultAllocator> {
+pub struct Vector<T: Sized, A: Allocator> {
     /// We've chosen `*mut T` over `NonNull<T>` at the expense of
     /// covariance because EASTL would try to de-allocate a non-null
     /// `begin`, even if it is size zero
@@ -22,10 +25,10 @@ pub struct Vector<T: Sized, A: Allocator = DefaultAllocator> {
     _holds_data: PhantomData<T>,
 }
 
-impl<T: Sized> Vector<T, DefaultAllocator> {
+impl<T: Sized, A: Allocator + Default> Vector<T, A> {
     /// Creates a new vector
     pub fn new() -> Self {
-        unsafe { Self::new_in(DefaultAllocator::default()) }
+        unsafe { Self::new_in(A::default()) }
     }
 
     /// Creates a new vector with a capacity allocated
@@ -41,23 +44,6 @@ impl<T: Sized> Vector<T, DefaultAllocator> {
 }
 
 impl<T: Sized, A: Allocator> Vector<T, A> {
-    /// Creates a vector from a buffer with a custom allocator
-    ///
-    /// # Arguments
-    ///
-    /// `buf`: The buffer
-    ///
-    /// `allocator`: The allocator used to allocate and de-allocate elements
-    ///
-    /// # Safety
-    ///
-    /// The allocator specified must safely allocate ande de-allocate valid memory
-    pub unsafe fn from_in(buf: &[T], allocator: A) -> Self {
-        let mut this = Self::new_in(allocator);
-        this.assign(buf);
-        this
-    }
-
     /// Creates a vector with a custom allocator
     ///
     /// # Arguments
@@ -74,19 +60,6 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
             capacity_ptr: std::ptr::null_mut(),
             allocator,
             _holds_data: PhantomData::default(),
-        }
-    }
-
-    /// Assigns a vector to a slice
-    ///
-    /// # Arguments
-    ///
-    /// `buf`: The slice
-    pub fn assign(&mut self, buf: &[T]) {
-        self.reserve(buf.len());
-        unsafe {
-            self.begin_ptr.copy_from(buf.as_ptr(), buf.len());
-            self.end_ptr = self.begin_ptr.add(buf.len());
         }
     }
 
@@ -266,6 +239,38 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
     }
 }
 
+impl<T: Sized + Clone, A: Allocator> Vector<T, A> {
+    /// Creates a vector from a buffer with a custom allocator
+    ///
+    /// # Arguments
+    ///
+    /// `buf`: The buffer
+    ///
+    /// `allocator`: The allocator used to allocate and de-allocate elements
+    ///
+    /// # Safety
+    ///
+    /// The allocator specified must safely allocate ande de-allocate valid memory
+    pub unsafe fn from_in(buf: &[T], allocator: A) -> Self {
+        let mut this = Self::new_in(allocator);
+        this.assign(buf);
+        this
+    }
+
+    /// Assigns a vector to a slice
+    ///
+    /// # Arguments
+    ///
+    /// `buf`: The slice
+    pub fn assign(&mut self, buf: &[T]) {
+        self.reserve(buf.len());
+        unsafe {
+            self.end_ptr = self.begin_ptr.add(buf.len());
+            self.as_slice_mut().clone_from_slice(buf);
+        }
+    }
+}
+
 impl<T, A: Allocator> AsRef<[T]> for Vector<T, A> {
     fn as_ref(&self) -> &[T] {
         self
@@ -287,9 +292,9 @@ where
     }
 }
 
-impl<T> Default for Vector<T, DefaultAllocator> {
+impl<T, A: Allocator + Default> Default for Vector<T, A> {
     fn default() -> Self {
-        Vector::new()
+        unsafe { Vector::new_in(A::default()) }
     }
 }
 
@@ -306,7 +311,7 @@ impl<T, A: Allocator> DerefMut for Vector<T, A> {
     }
 }
 
-impl<T: Sized> From<&[T]> for Vector<T, DefaultAllocator> {
+impl<T: Sized + Clone, A: Allocator + Default> From<&[T]> for Vector<T, A> {
     fn from(buf: &[T]) -> Self {
         let mut v = Vector::new();
         v.assign(buf);
@@ -314,7 +319,7 @@ impl<T: Sized> From<&[T]> for Vector<T, DefaultAllocator> {
     }
 }
 
-impl<T: Sized> From<&mut [T]> for Vector<T, DefaultAllocator> {
+impl<T: Sized + Clone, A: Allocator + Default> From<&mut [T]> for Vector<T, A> {
     fn from(buf: &mut [T]) -> Self {
         let mut v = Vector::new();
         v.assign(buf);
@@ -322,7 +327,7 @@ impl<T: Sized> From<&mut [T]> for Vector<T, DefaultAllocator> {
     }
 }
 
-impl<T: Sized, const N: usize> From<[T; N]> for Vector<T, DefaultAllocator> {
+impl<T: Sized, const N: usize, A: Allocator + Default> From<[T; N]> for Vector<T, A> {
     fn from(buf: [T; N]) -> Self {
         let mut v = Vector::with_capacity(buf.len());
         // move all values in
@@ -333,7 +338,7 @@ impl<T: Sized, const N: usize> From<[T; N]> for Vector<T, DefaultAllocator> {
     }
 }
 
-impl<T: Sized, const N: usize> From<&[T; N]> for Vector<T, DefaultAllocator> {
+impl<T: Sized + Clone, const N: usize, A: Allocator + Default> From<&[T; N]> for Vector<T, A> {
     fn from(buf: &[T; N]) -> Self {
         let mut v = Vector::new();
         v.assign(buf);
@@ -341,7 +346,7 @@ impl<T: Sized, const N: usize> From<&[T; N]> for Vector<T, DefaultAllocator> {
     }
 }
 
-impl<T> FromIterator<T> for Vector<T, DefaultAllocator> {
+impl<T, A: Allocator + Default> FromIterator<T> for Vector<T, A> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let iter = iter.into_iter();
         let (lower_bound, _) = iter.size_hint();
@@ -358,34 +363,33 @@ unsafe impl<T: Sync, A: Allocator + Sync> Sync for Vector<T, A> {}
 
 #[cfg(test)]
 mod test {
+    use crate::vector::DefaultVector;
     use memoffset::offset_of;
-
-    use super::Vector;
 
     #[test]
     fn layout() {
-        assert_eq!(offset_of!(Vector<u32>, begin_ptr), 0);
+        assert_eq!(offset_of!(DefaultVector<u32>, begin_ptr), 0);
         assert_eq!(
-            offset_of!(Vector<u32>, end_ptr),
+            offset_of!(DefaultVector<u32>, end_ptr),
             std::mem::size_of::<usize>()
         );
         assert_eq!(
-            offset_of!(Vector<u32>, capacity_ptr),
+            offset_of!(DefaultVector<u32>, capacity_ptr),
             std::mem::size_of::<usize>() * 2
         );
         assert_eq!(
-            offset_of!(Vector<u32>, allocator),
+            offset_of!(DefaultVector<u32>, allocator),
             std::mem::size_of::<usize>() * 3
         );
         assert_eq!(
-            std::mem::size_of::<Vector<u32>>(),
+            std::mem::size_of::<DefaultVector<u32>>(),
             std::mem::size_of::<usize>() * 4
         );
     }
 
     #[test]
     fn empty_vec() {
-        let v: Vector<u32> = Vector::new();
+        let v: DefaultVector<u32> = DefaultVector::new();
         assert!(v.begin_ptr.is_null());
         assert!(v.end_ptr.is_null());
         assert!(v.capacity_ptr.is_null());
@@ -396,7 +400,7 @@ mod test {
 
     #[test]
     fn push_one() {
-        let mut v = Vector::new();
+        let mut v = DefaultVector::new();
         v.push(20);
         assert_eq!(v.capacity(), 1);
         assert_eq!(v.len(), 1);
@@ -412,7 +416,7 @@ mod test {
 
     #[test]
     fn push_two() {
-        let mut v = Vector::new();
+        let mut v = DefaultVector::new();
         v.push(20);
         v.push(25);
         assert_eq!(v.capacity(), 2);
@@ -432,7 +436,7 @@ mod test {
 
     #[test]
     fn push_three() {
-        let mut v = Vector::new();
+        let mut v = DefaultVector::new();
         v.push(20);
         v.push(25);
         v.push(30);
@@ -451,7 +455,7 @@ mod test {
 
     #[test]
     fn insert() {
-        let mut v = Vector::new();
+        let mut v = DefaultVector::new();
         v.push(1);
         v.push(2);
         v.push(3);
@@ -463,7 +467,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut v = Vector::new();
+        let mut v = DefaultVector::new();
         v.push(1);
         v.push(2);
         v.push(3);
@@ -474,7 +478,7 @@ mod test {
 
     #[test]
     fn iter() {
-        let mut v = Vector::new();
+        let mut v = DefaultVector::new();
         v.push(1);
         v.push(2);
         v.push(3);
@@ -483,7 +487,7 @@ mod test {
 
     #[test]
     fn from() {
-        let v = Vector::from(&[1, 2, 3]);
+        let v = DefaultVector::from(&[1, 2, 3]);
         assert_eq!(v.capacity(), 3);
         assert_eq!(v.len(), 3);
         assert_eq!(&*v, &[1, 2, 3]);
@@ -491,7 +495,7 @@ mod test {
 
     #[test]
     fn from_iter() {
-        let v = (1..4).collect::<Vector<_>>();
+        let v = (1..4).collect::<DefaultVector<_>>();
         assert_eq!(v.capacity(), 3);
         assert_eq!(v.len(), 3);
         assert_eq!(&*v, &[1, 2, 3]);
@@ -512,7 +516,7 @@ mod test {
         let mut foo = 1;
         let mut bar = 1;
         {
-            let _ = Vector::from([Test { r: &mut foo }, Test { r: &mut bar }]);
+            let _ = DefaultVector::from([Test { r: &mut foo }, Test { r: &mut bar }]);
         }
         assert_eq!(foo, 2);
         assert_eq!(bar, 2);
@@ -520,7 +524,7 @@ mod test {
 
     #[test]
     fn clear() {
-        let mut v = Vector::from(&[1, 2, 3]);
+        let mut v = DefaultVector::from(&[1, 2, 3]);
         assert_eq!(v.capacity(), 3);
         assert_eq!(v.len(), 3);
         assert_eq!(&*v, &[1, 2, 3]);
@@ -529,5 +533,32 @@ mod test {
         v.clear();
         assert!(v.is_empty());
         assert_eq!(v.capacity(), 0);
+    }
+
+    #[test]
+    fn ensure_clone() {
+        struct A {
+            a: *mut u32,
+        }
+
+        impl A {
+            fn new(a: &mut u32) -> Self {
+                *a += 1;
+                Self { a }
+            }
+        }
+
+        impl Clone for A {
+            fn clone(&self) -> Self {
+                Self::new(unsafe { &mut *self.a })
+            }
+        }
+
+        let mut i = 0;
+        let a = [A::new(&mut i)];
+
+        let _ = DefaultVector::from(&a);
+
+        assert_eq!(i, 2);
     }
 }

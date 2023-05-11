@@ -102,7 +102,6 @@ fn fnv1<S: AsRef<str>>(str: S) -> usize {
     let mut res: u32 = 2166136261;
     str.as_ref()
         .bytes()
-        .into_iter()
         .for_each(|c| res = (res.wrapping_mul(16777619)) ^ (c as u32));
     res as usize
 }
@@ -123,6 +122,7 @@ impl Hash<*const c_char> for DefaultHash<*const c_char> {
 mod test {
     use super::DefaultHash;
     use super::Hash;
+    use crate::allocator::DefaultAllocator;
     use std::ffi::{c_char, CString};
 
     #[test]
@@ -138,7 +138,7 @@ mod test {
             3003320415
         );
         assert_eq!(
-            DefaultHash::hash(&crate::string::String::from("Test")),
+            DefaultHash::hash(&crate::string::String::<DefaultAllocator>::from("Test")),
             556965705
         );
     }
