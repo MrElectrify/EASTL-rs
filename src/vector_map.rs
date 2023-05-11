@@ -7,14 +7,17 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use superslice::Ext;
 
+/// Vector map with the default allocator.
+pub type DefaultVectorMap<K, V, C = Less<K>> = VectorMap<K, V, DefaultAllocator, C>;
+
 /// A vector map is a map backed by a vector, maintaining an order
 #[repr(C)]
-pub struct VectorMap<K: Eq, V, C: Compare<K> = Less<K>, A: Allocator = DefaultAllocator> {
+pub struct VectorMap<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
     base: Vector<(K, V), A>,
     _phantom: PhantomData<C>,
 }
 
-impl<K: Eq + PartialOrd, V> VectorMap<K, V, Less<K>, DefaultAllocator> {
+impl<K: Eq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> {
     /// Creates a new empty vector map
     pub fn new() -> Self {
         Self {
@@ -36,7 +39,7 @@ impl<K: Eq + PartialOrd, V> VectorMap<K, V, Less<K>, DefaultAllocator> {
     }
 }
 
-impl<K: Eq, V, C: Compare<K>, A: Allocator> VectorMap<K, V, C, A> {
+impl<K: Eq, V, A: Allocator, C: Compare<K>> VectorMap<K, V, A, C> {
     /// Returns the capacity of the vector map
     pub fn capacity(&self) -> usize {
         self.base.capacity()
@@ -183,13 +186,13 @@ impl<K: Eq, V, C: Compare<K>, A: Allocator> VectorMap<K, V, C, A> {
     }
 }
 
-impl<K: Eq, V, C: Compare<K>, A: Allocator> AsRef<[(K, V)]> for VectorMap<K, V, C, A> {
+impl<K: Eq, V, A: Allocator, C: Compare<K>> AsRef<[(K, V)]> for VectorMap<K, V, A, C> {
     fn as_ref(&self) -> &[(K, V)] {
         self.base.as_ref()
     }
 }
 
-impl<K: Eq + Debug, V: Debug, C: Compare<K>, A: Allocator> Debug for VectorMap<K, V, C, A> {
+impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for VectorMap<K, V, A, C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -203,13 +206,13 @@ impl<K: Eq + Debug, V: Debug, C: Compare<K>, A: Allocator> Debug for VectorMap<K
     }
 }
 
-impl<K: Eq + PartialOrd, V> Default for VectorMap<K, V, Less<K>, DefaultAllocator> {
+impl<K: Eq + PartialOrd, V, A: Allocator + Default> Default for VectorMap<K, V, A, Less<K>> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<K: Eq + Debug, V: Debug, C: Compare<K>, A: Allocator> Deref for VectorMap<K, V, C, A> {
+impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Deref for VectorMap<K, V, A, C> {
     type Target = [(K, V)];
 
     fn deref(&self) -> &Self::Target {
@@ -217,8 +220,8 @@ impl<K: Eq + Debug, V: Debug, C: Compare<K>, A: Allocator> Deref for VectorMap<K
     }
 }
 
-impl<K: Clone + Eq + PartialOrd, V: Clone> From<&[(K, V)]>
-    for VectorMap<K, V, Less<K>, DefaultAllocator>
+impl<K: Clone + Eq + PartialOrd, V: Clone, A: Allocator + Default> From<&[(K, V)]>
+    for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: &[(K, V)]) -> Self {
         let mut vec = VectorMap::with_capacity(value.len());
@@ -229,16 +232,16 @@ impl<K: Clone + Eq + PartialOrd, V: Clone> From<&[(K, V)]>
     }
 }
 
-impl<K: Clone + Eq + PartialOrd, V: Clone> From<&mut [(K, V)]>
-    for VectorMap<K, V, Less<K>, DefaultAllocator>
+impl<K: Clone + Eq + PartialOrd, V: Clone, A: Allocator + Default> From<&mut [(K, V)]>
+    for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: &mut [(K, V)]) -> Self {
         VectorMap::from(&*value)
     }
 }
 
-impl<K: Eq + PartialOrd, V, const N: usize> From<[(K, V); N]>
-    for VectorMap<K, V, Less<K>, DefaultAllocator>
+impl<K: Eq + PartialOrd, V, const N: usize, A: Allocator + Default> From<[(K, V); N]>
+    for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: [(K, V); N]) -> Self {
         let mut vec = VectorMap::with_capacity(value.len());
@@ -249,15 +252,17 @@ impl<K: Eq + PartialOrd, V, const N: usize> From<[(K, V); N]>
     }
 }
 
-impl<K: Clone + Eq + PartialOrd, V: Clone, const N: usize> From<&[(K, V); N]>
-    for VectorMap<K, V, Less<K>, DefaultAllocator>
+impl<K: Clone + Eq + PartialOrd, V: Clone, const N: usize, A: Allocator + Default>
+    From<&[(K, V); N]> for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: &[(K, V); N]) -> Self {
         VectorMap::from(value.as_slice())
     }
 }
 
-impl<K: Eq + PartialOrd, V> FromIterator<(K, V)> for VectorMap<K, V, Less<K>, DefaultAllocator> {
+impl<K: Eq + PartialOrd, V, A: Allocator + Default> FromIterator<(K, V)>
+    for VectorMap<K, V, A, Less<K>>
+{
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         // we need to insert individually here to uphold the ordering constraints
         let mut vec = Self::default();
@@ -268,30 +273,30 @@ impl<K: Eq + PartialOrd, V> FromIterator<(K, V)> for VectorMap<K, V, Less<K>, De
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, C: Compare<K> + Send, A: Allocator + Send> Send
-    for VectorMap<K, V, C, A>
+unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, C: Compare<K> + Send> Send
+    for VectorMap<K, V, A, C>
 {
 }
-unsafe impl<K: Eq + Sync, V: Sync, C: Compare<K> + Sync, A: Allocator + Sync> Sync
-    for VectorMap<K, V, C, A>
+unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, C: Compare<K> + Sync> Sync
+    for VectorMap<K, V, A, C>
 {
 }
 
 #[cfg(test)]
 mod test {
-    use crate::vector_map::VectorMap;
+    use crate::vector_map::DefaultVectorMap;
 
     #[test]
     fn layout() {
         assert_eq!(
-            std::mem::size_of::<VectorMap<u32, u32>>(),
+            std::mem::size_of::<DefaultVectorMap<u32, u32>>(),
             std::mem::size_of::<usize>() * 4
         );
     }
 
     #[test]
     fn default_state() {
-        let vec: VectorMap<u32, ()> = VectorMap::default();
+        let vec: DefaultVectorMap<u32, ()> = DefaultVectorMap::default();
 
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);
@@ -300,7 +305,7 @@ mod test {
 
     #[test]
     fn insert() {
-        let mut vec = VectorMap::default();
+        let mut vec = DefaultVectorMap::default();
 
         vec.insert(5, 6);
 
@@ -312,7 +317,7 @@ mod test {
 
     #[test]
     fn from_iter() {
-        let vec: VectorMap<_, _, _, _> = [(5, 6)].into_iter().collect();
+        let vec: DefaultVectorMap<_, _, _> = [(5, 6)].into_iter().collect();
 
         assert!(!vec.is_empty());
         assert_eq!(vec.len(), 1);
@@ -322,7 +327,7 @@ mod test {
 
     #[test]
     fn from_owned() {
-        let vec = VectorMap::from([(5, 6)]);
+        let vec = DefaultVectorMap::from([(5, 6)]);
 
         assert!(!vec.is_empty());
         assert_eq!(vec.len(), 1);
@@ -332,7 +337,7 @@ mod test {
 
     #[test]
     fn from_ref() {
-        let vec = VectorMap::from(&[(5, 6)]);
+        let vec = DefaultVectorMap::from(&[(5, 6)]);
 
         assert!(!vec.is_empty());
         assert_eq!(vec.len(), 1);
@@ -342,7 +347,7 @@ mod test {
 
     #[test]
     fn get() {
-        let vec = VectorMap::from([(5, 6)]);
+        let vec = DefaultVectorMap::from([(5, 6)]);
 
         assert_eq!(vec.get(&5), Some(&6));
         assert_eq!(vec.get(&6), None);
@@ -350,7 +355,7 @@ mod test {
 
     #[test]
     fn get_mut() {
-        let mut vec = VectorMap::from([(5, 6)]);
+        let mut vec = DefaultVectorMap::from([(5, 6)]);
 
         let val = vec.get_mut(&5).unwrap();
         assert_eq!(val, &mut 6);
@@ -364,7 +369,7 @@ mod test {
 
     #[test]
     fn insert_less() {
-        let mut vec = VectorMap::default();
+        let mut vec = DefaultVectorMap::default();
 
         vec.insert(5, 6);
         vec.insert(4, 5);
@@ -376,7 +381,7 @@ mod test {
 
     #[test]
     fn iter() {
-        let vec = VectorMap::from([(5, 6), (4, 7)]);
+        let vec = DefaultVectorMap::from([(5, 6), (4, 7)]);
 
         assert_eq!(vec.iter().next().unwrap().1, 7);
         assert_eq!(vec.iter().len(), 2);
@@ -384,7 +389,7 @@ mod test {
 
     #[test]
     fn big_test() {
-        let vec: VectorMap<_, _> = (0..50)
+        let vec: DefaultVectorMap<_, _> = (0..50)
             .map(|x| x * 2)
             .chain((0..50).map(|x| x * 2 + 1))
             .map(|x| (x, x + 2))
