@@ -257,6 +257,27 @@ impl<T: Sized + Clone, A: Allocator> Vector<T, A> {
         this
     }
 
+    /// Append a buffer of elements to the vector.
+    ///
+    /// # Arguments
+    ///
+    /// `buf`: The buffer or elements.
+    pub fn append(&mut self, buf: &[T]) {
+        let old_len = self.len();
+        let new_len = old_len + buf.len();
+        // reserve space for the buffer
+        if new_len > self.capacity() {
+            // reserve the space
+            self.reserve(new_len);
+        }
+
+        // copy in place
+        unsafe {
+            self.end_ptr = self.end_ptr.add(buf.len());
+            self.as_slice_mut()[old_len..old_len + buf.len()].clone_from_slice(buf);
+        }
+    }
+
     /// Assigns a vector to a slice
     ///
     /// # Arguments
@@ -264,6 +285,7 @@ impl<T: Sized + Clone, A: Allocator> Vector<T, A> {
     /// `buf`: The slice
     pub fn assign(&mut self, buf: &[T]) {
         self.reserve(buf.len());
+
         unsafe {
             self.end_ptr = self.begin_ptr.add(buf.len());
             self.as_slice_mut().clone_from_slice(buf);
@@ -566,5 +588,16 @@ mod test {
         let _ = DefaultVector::from(&a);
 
         assert_eq!(i, 2);
+    }
+
+    #[test]
+    fn append() {
+        let mut v = DefaultVector::from(&[1, 2, 3]);
+
+        // append 3 more numbers
+        v.append(&[4, 5, 6]);
+        assert_eq!(v.len(), 6);
+        assert_eq!(v.capacity(), 6);
+        assert_eq!(&*v, &[1, 2, 3, 4, 5, 6]);
     }
 }

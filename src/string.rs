@@ -34,7 +34,8 @@ impl<A: Allocator + Default> String<A> {
     /// `capacity`: The initial capacity of the string
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            vec: Vector::with_capacity(capacity),
+            // make space for the null terminator
+            vec: Vector::with_capacity(capacity + 1),
         }
     }
 }
@@ -51,10 +52,13 @@ impl<A: Allocator> String<A> {
     /// # Safety
     ///
     /// The allocator specified must safely allocate ande de-allocate valid memory
-    pub unsafe fn from_in(s: &str, allocator: A) -> Self {
-        Self {
-            vec: Vector::from_in(s.as_bytes(), allocator),
-        }
+    pub unsafe fn from_in<S: AsRef<str>>(s: S, allocator: A) -> Self {
+        let mut ret = Self {
+            vec: Vector::new_in(allocator),
+        };
+        ret.assign(s);
+
+        ret
     }
 
     /// Creates a string with a custom allocator
@@ -74,7 +78,12 @@ impl<A: Allocator> String<A> {
 
     /// Assigns a string to a slice
     pub fn assign<S: AsRef<str>>(&mut self, buf: S) {
-        self.vec.assign(buf.as_ref().as_bytes())
+        self.vec.clear();
+        self.reserve(buf.as_ref().len());
+
+        // copy over and null terminate
+        self.vec.append(buf.as_ref().as_bytes());
+        self.vec.push(0);
     }
 
     /// Returns the string as bytes
@@ -89,12 +98,17 @@ impl<A: Allocator> String<A> {
 
     /// Returns the capacity of the string
     pub fn capacity(&self) -> usize {
-        self.vec.capacity()
+        let capacity = self.vec.capacity();
+        if capacity > 0 {
+            capacity - 1
+        } else {
+            0
+        }
     }
 
     /// Returns true if the string is empty
     pub fn is_empty(&self) -> bool {
-        self.vec.is_empty()
+        self.len() == 0
     }
 
     /// Returns true if the string is full to the capacity
@@ -104,7 +118,12 @@ impl<A: Allocator> String<A> {
 
     /// Returns the length of the string
     pub fn len(&self) -> usize {
-        self.vec.len()
+        let len = self.vec.len();
+        if len > 0 {
+            len - 1
+        } else {
+            0
+        }
     }
 
     /// Pushes a new element into the string
@@ -113,12 +132,12 @@ impl<A: Allocator> String<A> {
     ///
     /// `elem`: The new element
     pub fn push(&mut self, elem: char) {
-        self.vec.push(elem as u8)
+        self.insert(self.len(), elem)
     }
 
     /// Pops an element off of the back of the array
     pub fn pop(&mut self) -> Option<char> {
-        self.vec.pop().map(|elem| elem as char)
+        self.remove(self.len().max(1) - 1)
     }
 
     /// Inserts a char into the string at an index.
@@ -130,6 +149,12 @@ impl<A: Allocator> String<A> {
     ///
     /// `elem`: The char to add to the string
     pub fn insert(&mut self, index: usize, elem: char) {
+        assert!(index <= self.len(), "index out of bounds");
+        if self.vec.is_empty() {
+            // add the null terminator
+            self.vec.push(0);
+        }
+
         self.vec.insert(index, elem as u8)
     }
 
@@ -139,7 +164,12 @@ impl<A: Allocator> String<A> {
     ///
     /// `index`: The index of the element to remove
     pub fn remove(&mut self, index: usize) -> Option<char> {
-        self.vec.remove(index).map(|elem| elem as char)
+        // account for null terminator
+        if index >= self.len() {
+            None
+        } else {
+            self.vec.remove(index).map(|elem| elem as char)
+        }
     }
 
     /// Reserves space for chars within the string
@@ -148,13 +178,14 @@ impl<A: Allocator> String<A> {
     ///
     /// `capacity`: The new capacity of the string
     pub fn reserve(&mut self, capacity: usize) {
-        self.vec.reserve(capacity)
+        // make space for the null terminator
+        self.vec.reserve(capacity + 1)
     }
 }
 
 impl<A: Allocator> AsRef<[u8]> for String<A> {
     fn as_ref(&self) -> &[u8] {
-        self.vec.as_slice()
+        self.vec.as_slice().split_last().unwrap_or((&0, &[])).1
     }
 }
 
@@ -188,13 +219,13 @@ impl<A: Allocator> Deref for String<A> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { std::str::from_utf8_unchecked(&self.vec) }
+        unsafe { std::str::from_utf8_unchecked(self.vec.split_last().unwrap().1) }
     }
 }
 
 impl<A: Allocator> DerefMut for String<A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { std::str::from_utf8_unchecked_mut(&mut self.vec) }
+        unsafe { std::str::from_utf8_unchecked_mut(self.vec.split_last_mut().unwrap().1) }
     }
 }
 
@@ -206,9 +237,7 @@ impl<A: Allocator> Display for String<A> {
 
 impl<A: Allocator + Default> From<&str> for String<A> {
     fn from(s: &str) -> Self {
-        Self {
-            vec: Vector::from(s.as_bytes()),
-        }
+        unsafe { Self::from_in(s, A::default()) }
     }
 }
 
@@ -216,9 +245,7 @@ impl<A: Allocator + Default> FromStr for String<A> {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            vec: Vector::from(s.as_bytes()),
-        })
+        Ok(Self::from(s))
     }
 }
 
@@ -239,6 +266,30 @@ mod test {
     use crate::string::DefaultString;
 
     use super::String;
+
+    #[test]
+    fn is_empty() {
+        let mut s = DefaultString::new();
+        assert!(s.is_empty());
+
+        s.push('a');
+        assert!(!s.is_empty());
+
+        s.pop();
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn is_full() {
+        let mut s = DefaultString::new();
+        assert!(s.is_full());
+
+        s.push('a');
+        assert!(s.is_full());
+
+        s.pop();
+        assert!(!s.is_full());
+    }
 
     #[test]
     fn layout() {
@@ -263,7 +314,7 @@ mod test {
         s.push('b');
         s.push('c');
         assert_eq!(s.as_str(), "abc");
-        assert_eq!(s.capacity(), 4);
+        assert_eq!(s.capacity(), 3);
     }
 
     #[test]
@@ -274,17 +325,38 @@ mod test {
     }
 
     #[test]
+    fn push_pop() {
+        let mut s = DefaultString::new();
+
+        for _ in 0..5 {
+            s.push('a');
+            assert_eq!(s.pop(), Some('a'));
+            assert_eq!(s.pop(), None);
+        }
+
+        assert!(s.is_empty());
+    }
+
+    #[test]
     fn insert() {
         let mut s = DefaultString::from("ab");
         s.insert(1, 'c');
         assert_eq!(s.as_str(), "acb");
-        assert_eq!(s.capacity(), 4);
+        assert_eq!(s.capacity(), 5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn insert_out_of_bounds() {
+        let mut s = DefaultString::from("ab");
+        s.insert(3, 'c');
     }
 
     #[test]
     fn remove() {
         let mut s = DefaultString::from("ab");
         assert_eq!(s.remove(1), Some('b'));
+        assert_eq!(s.remove(1), None);
         assert_eq!(s.as_str(), "a");
     }
 }
