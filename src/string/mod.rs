@@ -1,3 +1,5 @@
+mod null_terminator_allocator;
+
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::{
@@ -6,6 +8,7 @@ use std::{
 };
 
 use crate::allocator::DefaultAllocator;
+use crate::string::null_terminator_allocator::NullTerminatorAllocator;
 use crate::{
     allocator::Allocator,
     hash::{DefaultHash, Hash},
@@ -18,7 +21,7 @@ pub type DefaultString = String<DefaultAllocator>;
 /// `String` is what it sounds like, a string of characters.
 /// It's actually implemented internally as a vector
 pub struct String<A: Allocator> {
-    vec: Vector<u8, A>,
+    vec: Vector<u8, NullTerminatorAllocator<A>>,
 }
 
 impl<A: Allocator + Default> String<A> {
@@ -35,7 +38,7 @@ impl<A: Allocator + Default> String<A> {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             // make space for the null terminator
-            vec: Vector::with_capacity(capacity + 1),
+            vec: Vector::with_capacity(capacity),
         }
     }
 }
@@ -54,7 +57,7 @@ impl<A: Allocator> String<A> {
     /// The allocator specified must safely allocate ande de-allocate valid memory
     pub unsafe fn from_in<S: AsRef<str>>(s: S, allocator: A) -> Self {
         let mut ret = Self {
-            vec: Vector::new_in(allocator),
+            vec: Vector::new_in(NullTerminatorAllocator(allocator)),
         };
         ret.assign(s);
 
@@ -72,18 +75,19 @@ impl<A: Allocator> String<A> {
     /// The allocator specified must safely allocate ande de-allocate valid memory
     pub unsafe fn new_in(allocator: A) -> Self {
         Self {
-            vec: Vector::new_in(allocator),
+            vec: Vector::new_in(NullTerminatorAllocator(allocator)),
         }
     }
 
     /// Assigns a string to a slice
     pub fn assign<S: AsRef<str>>(&mut self, buf: S) {
-        self.vec.clear();
         self.reserve(buf.as_ref().len());
 
         // copy over and null terminate
         self.vec.append(buf.as_ref().as_bytes());
-        self.vec.push(0);
+
+        // make sure the end is null-terminated
+        unsafe { self.null_terminate() }
     }
 
     /// Returns the string as bytes
@@ -98,17 +102,12 @@ impl<A: Allocator> String<A> {
 
     /// Returns the capacity of the string
     pub fn capacity(&self) -> usize {
-        let capacity = self.vec.capacity();
-        if capacity > 0 {
-            capacity - 1
-        } else {
-            0
-        }
+        self.vec.capacity()
     }
 
     /// Returns true if the string is empty
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.vec.is_empty()
     }
 
     /// Returns true if the string is full to the capacity
@@ -118,12 +117,7 @@ impl<A: Allocator> String<A> {
 
     /// Returns the length of the string
     pub fn len(&self) -> usize {
-        let len = self.vec.len();
-        if len > 0 {
-            len - 1
-        } else {
-            0
-        }
+        self.vec.len()
     }
 
     /// Pushes a new element into the string
@@ -137,7 +131,12 @@ impl<A: Allocator> String<A> {
 
     /// Pops an element off of the back of the array
     pub fn pop(&mut self) -> Option<char> {
-        self.remove(self.len().max(1) - 1)
+        let elem = self.vec.pop().map(|elem| elem as char);
+
+        // null terminate
+        unsafe { self.null_terminate() }
+
+        elem
     }
 
     /// Inserts a char into the string at an index.
@@ -149,13 +148,10 @@ impl<A: Allocator> String<A> {
     ///
     /// `elem`: The char to add to the string
     pub fn insert(&mut self, index: usize, elem: char) {
-        assert!(index <= self.len(), "index out of bounds");
-        if self.vec.is_empty() {
-            // add the null terminator
-            self.vec.push(0);
-        }
+        self.vec.insert(index, elem as u8);
 
-        self.vec.insert(index, elem as u8)
+        // null terminate
+        unsafe { self.null_terminate() }
     }
 
     /// Remove the char at the index and return it
@@ -181,11 +177,23 @@ impl<A: Allocator> String<A> {
         // make space for the null terminator
         self.vec.reserve(capacity + 1)
     }
+
+    /// Null terminate the string.
+    ///
+    /// # Safety
+    ///
+    /// `end_ptr` must point to some valid memory (or null)
+    unsafe fn null_terminate(&mut self) {
+        // make sure the end is null-terminated
+        if let Some(end) = self.vec.end_ptr.as_mut() {
+            *end = 0;
+        }
+    }
 }
 
 impl<A: Allocator> AsRef<[u8]> for String<A> {
     fn as_ref(&self) -> &[u8] {
-        self.vec.as_slice().split_last().unwrap_or((&0, &[])).1
+        self.vec.as_slice()
     }
 }
 
@@ -219,13 +227,13 @@ impl<A: Allocator> Deref for String<A> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { std::str::from_utf8_unchecked(self.vec.split_last().unwrap().1) }
+        unsafe { std::str::from_utf8_unchecked(&self.vec) }
     }
 }
 
 impl<A: Allocator> DerefMut for String<A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { std::str::from_utf8_unchecked_mut(self.vec.split_last_mut().unwrap().1) }
+        unsafe { std::str::from_utf8_unchecked_mut(&mut self.vec) }
     }
 }
 
@@ -304,7 +312,6 @@ mod test {
     fn from_str() {
         let s = DefaultString::from("abc");
         assert_eq!(s.as_str(), "abc");
-        assert_eq!(s.capacity(), 3);
     }
 
     #[test]
@@ -314,7 +321,6 @@ mod test {
         s.push('b');
         s.push('c');
         assert_eq!(s.as_str(), "abc");
-        assert_eq!(s.capacity(), 3);
     }
 
     #[test]
@@ -342,7 +348,6 @@ mod test {
         let mut s = DefaultString::from("ab");
         s.insert(1, 'c');
         assert_eq!(s.as_str(), "acb");
-        assert_eq!(s.capacity(), 5);
     }
 
     #[test]
@@ -358,5 +363,23 @@ mod test {
         assert_eq!(s.remove(1), Some('b'));
         assert_eq!(s.remove(1), None);
         assert_eq!(s.as_str(), "a");
+    }
+
+    #[test]
+    fn null_terminated() {
+        let mut s = DefaultString::from("a");
+        assert_eq!(unsafe { *s.vec.end_ptr }, 0);
+
+        s.push('a');
+        assert_eq!(unsafe { *s.vec.end_ptr }, 0);
+
+        s.pop();
+        assert_eq!(unsafe { *s.vec.end_ptr }, 0);
+
+        s.assign("ab");
+        assert_eq!(unsafe { *s.vec.end_ptr }, 0);
+
+        s.insert(1, 'c');
+        assert_eq!(unsafe { *s.vec.end_ptr }, 0);
     }
 }

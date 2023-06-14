@@ -19,6 +19,7 @@ pub struct Vector<T: Sized, A: Allocator> {
     /// covariance because EASTL would try to de-allocate a non-null
     /// `begin`, even if it is size zero
     pub(crate) begin_ptr: *mut T,
+    pub(crate) 
     end_ptr: *mut T,
     capacity_ptr: *mut T,
     allocator: A,
