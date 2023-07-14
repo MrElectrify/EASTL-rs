@@ -11,6 +11,7 @@ A binary-compatible EASTL implementation written in Rust
 - `Deque`
 - `Queue`
 - `VectorMap`
+- `FixedVector`
 
 * there might be some things missing :)
 
