@@ -4,7 +4,9 @@ use crate::vector::Vector;
 use moveit::new::New;
 use moveit::{new, MoveNew, MoveRef};
 use std::ffi::c_void;
+use std::fmt::Debug;
 use std::mem::MaybeUninit;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::{mem, ptr};
 
@@ -147,36 +149,74 @@ impl<T: Sized, const NODE_COUNT: usize, A: Allocator> FixedVector<T, NODE_COUNT,
     }
 }
 
+impl<T: Sized, const NODE_COUNT: usize, A: Allocator> AsRef<[T]> for FixedVector<T, NODE_COUNT, A> {
+    fn as_ref(&self) -> &[T] {
+        self.base_vec.as_ref()
+    }
+}
+
+impl<T: Sized + Debug, const NODE_COUNT: usize, A: Allocator> Debug
+    for FixedVector<T, NODE_COUNT, A>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{:?}", &self.base_vec))
+    }
+}
+
+impl<T: Sized + Debug, const NODE_COUNT: usize, A: Allocator> Deref
+    for FixedVector<T, NODE_COUNT, A>
+{
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::fixed_vector::DefaultFixedVector;
     use moveit::moveit;
 
     #[test]
-    fn init_push() {
+    fn push() {
         moveit! {
-            let mut fixed_vec = unsafe { DefaultFixedVector::<u32, 10>::new() };
+            let mut v = unsafe { DefaultFixedVector::<u32, 10>::new() };
         };
-        assert_eq!(fixed_vec.len(), 0);
-        assert!(!fixed_vec.has_overflowed());
-        assert!(!fixed_vec.is_full());
-        fixed_vec.push(64);
-        assert_eq!(fixed_vec.len(), 1);
-        assert_eq!(fixed_vec.as_slice()[0], 64);
-        assert!(!fixed_vec.has_overflowed());
+        assert_eq!(v.len(), 0);
+        assert!(!v.has_overflowed());
+        assert!(!v.is_full());
+        assert!(v.is_empty());
+        v.push(64);
+        assert_eq!(v.len(), 1);
+        assert_eq!(v.as_slice()[0], 64);
+        assert!(!v.has_overflowed());
+        assert!(!v.is_full());
+        assert!(!v.is_empty());
     }
 
     #[test]
     fn overflow() {
         moveit! {
-            let mut fixed_vec = unsafe { DefaultFixedVector::<u32, 10>::new() };
+            let mut v = unsafe { DefaultFixedVector::<u32, 10>::new() };
         };
         for i in 0..12 {
-            fixed_vec.push(i);
+            v.push(i);
         }
-        assert_eq!(fixed_vec.len(), 12);
-        assert!(fixed_vec.has_overflowed());
-        assert!(fixed_vec.is_full());
-        assert_eq!(fixed_vec.as_slice()[11], 11);
+        assert_eq!(v.len(), 12);
+        assert!(v.has_overflowed());
+        assert!(v.is_full());
+        assert_eq!(v.as_slice()[11], 11);
+    }
+
+    #[test]
+    fn iter() {
+        moveit! {
+            let mut v = unsafe { DefaultFixedVector::<u32, 10>::new() };
+        };
+        v.push(1);
+        v.push(2);
+        v.push(3);
+        assert_eq!(v.iter().sum::<u32>(), 6);
     }
 }
