@@ -17,14 +17,12 @@ pub type DefaultFixedVector<T, const NODE_COUNT: usize> =
     FixedVector<T, NODE_COUNT, DefaultAllocator>;
 
 #[repr(C)]
-pub struct FixedVector<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator> {
+pub struct FixedVector<T: Sized, const NODE_COUNT: usize, A: Allocator> {
     base_vec: Vector<T, FixedVectorAllocator<A>>,
-    buffer: [T; NODE_COUNT],
+    buffer: [MaybeUninit<T>; NODE_COUNT],
 }
 
-impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator>
-    FixedVector<T, NODE_COUNT, A>
-{
+impl<T: Sized, const NODE_COUNT: usize, A: Allocator> FixedVector<T, NODE_COUNT, A> {
     /// Create a new fixed_vector with the given overflow allocator
     ///
     /// # Arguments
@@ -35,7 +33,7 @@ impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator>
     pub unsafe fn new_in(overflow_allocator: A) -> impl New<Output = Self> {
         new::of(Self {
             base_vec: Vector::new_in(FixedVectorAllocator::new_with(overflow_allocator)),
-            buffer: [T::default(); NODE_COUNT],
+            buffer: std::array::from_fn(|_| MaybeUninit::uninit().assume_init()),
         })
         .with(|this| {
             let this = this.get_unchecked_mut();
@@ -44,17 +42,14 @@ impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator>
     }
 
     fn init_base_vec(&mut self) {
-        self.base_vec.begin_ptr = &mut self.buffer[0] as *mut T;
-        self.base_vec.end_ptr = &mut self.buffer[0] as *mut T;
-        self.base_vec.capacity_ptr =
-            (&mut self.buffer[0] as *mut T as usize + NODE_COUNT) as *mut T;
-        self.base_vec.allocator.pool_begin = &mut self.buffer[0] as *mut T as *mut c_void;
+        self.base_vec.begin_ptr = self.buffer[0].as_mut_ptr();
+        self.base_vec.end_ptr = self.buffer[0].as_mut_ptr();
+        self.base_vec.capacity_ptr = (self.buffer[0].as_mut_ptr() as usize + NODE_COUNT) as *mut T;
+        self.base_vec.allocator.pool_begin = self.buffer[0].as_mut_ptr() as *mut c_void;
     }
 }
 
-impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator + Default>
-    FixedVector<T, NODE_COUNT, A>
-{
+impl<T: Sized, const NODE_COUNT: usize, A: Allocator + Default> FixedVector<T, NODE_COUNT, A> {
     /// Create a new fixed_vector
     ///
     /// # Safety
@@ -64,7 +59,7 @@ impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator + Default>
     }
 }
 
-unsafe impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator> MoveNew
+unsafe impl<T: Sized, const NODE_COUNT: usize, A: Allocator> MoveNew
     for FixedVector<T, NODE_COUNT, A>
 {
     unsafe fn move_new(mut src: Pin<MoveRef<Self>>, this: Pin<&mut MaybeUninit<Self>>) {
@@ -87,9 +82,7 @@ unsafe impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator> Mo
     }
 }
 
-impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator>
-    FixedVector<T, NODE_COUNT, A>
-{
+impl<T: Sized, const NODE_COUNT: usize, A: Allocator> FixedVector<T, NODE_COUNT, A> {
     /// Returns the vector as raw bytes
     pub fn as_slice(&self) -> &[T] {
         self.base_vec.as_slice()
@@ -119,12 +112,12 @@ impl<T: Sized + Default + Copy, const NODE_COUNT: usize, A: Allocator>
         // If len >= capacity (NodeCount), then we are definitely full.
         // Also, if our size is smaller but we've switched away from self.buffer due to a previous overflow, then we are considered full.
         self.base_vec.len() >= NODE_COUNT
-            || self.base_vec.begin_ptr.cast_const() != self.buffer.as_ptr()
+            || self.base_vec.begin_ptr.cast_const() != self.buffer[0].as_ptr()
     }
 
     /// Returns true if the allocations spilled over into the overflow allocator. Meaningful only if overflow is enabled.
     pub fn has_overflowed(&self) -> bool {
-        !ptr::eq(self.base_vec.begin_ptr, &self.buffer[0])
+        !ptr::eq(self.base_vec.begin_ptr, self.buffer[0].as_ptr())
     }
 
     /// Pushes a new element into the vector
@@ -166,6 +159,7 @@ mod test {
         };
         assert_eq!(fixed_vec.len(), 0);
         assert!(!fixed_vec.has_overflowed());
+        assert!(!fixed_vec.is_full());
         fixed_vec.push(64);
         assert_eq!(fixed_vec.len(), 1);
         assert_eq!(fixed_vec.as_slice()[0], 64);
@@ -182,6 +176,7 @@ mod test {
         }
         assert_eq!(fixed_vec.len(), 12);
         assert!(fixed_vec.has_overflowed());
+        assert!(fixed_vec.is_full());
         assert_eq!(fixed_vec.as_slice()[11], 11);
     }
 }
