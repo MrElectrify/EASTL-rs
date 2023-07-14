@@ -1,5 +1,4 @@
 use std::{
-    cmp::min,
     fmt::Debug,
     marker::PhantomData,
     ops::{Deref, DerefMut},
@@ -19,11 +18,10 @@ pub struct Vector<T: Sized, A: Allocator> {
     /// covariance because EASTL would try to de-allocate a non-null
     /// `begin`, even if it is size zero
     pub(crate) begin_ptr: *mut T,
-    pub(crate) 
-    end_ptr: *mut T,
-    capacity_ptr: *mut T,
-    allocator: A,
-    _holds_data: PhantomData<T>,
+    pub(crate) end_ptr: *mut T,
+    pub(crate) capacity_ptr: *mut T,
+    pub(crate) allocator: A,
+    pub(crate) _holds_data: PhantomData<T>,
 }
 
 impl<T: Sized, A: Allocator + Default> Vector<T, A> {
@@ -191,22 +189,28 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
     ///
     /// # Arguments
     ///
-    /// `capacity`: The new capacity of the vector
-    pub fn reserve(&mut self, capacity: usize) {
+    /// `additional`: The capacity to add to the vector
+    pub fn reserve(&mut self, additional: usize) {
+        if additional == 0 {
+            return;
+        }
         // allocate a new bit of memory
         let size = self.len();
+        let new_capacity = self.capacity() + additional;
         // allocate the new buffer
-        let new_begin_ptr = unsafe { self.allocator.allocate::<T>(capacity) };
+        let new_begin_ptr = unsafe { self.allocator.allocate::<T>(new_capacity) };
         // copy from the old array if we should
-        if size > 0 {
+        if !self.begin_ptr.is_null() {
             unsafe {
-                new_begin_ptr.copy_from(self.begin_ptr, min(size, capacity));
+                new_begin_ptr.copy_from(self.begin_ptr, size);
+                // deallocate the old memory
+                self.allocator.deallocate(self.begin_ptr, self.capacity());
             }
         }
         // calculate and store new pointers
         self.begin_ptr = new_begin_ptr;
         self.end_ptr = unsafe { new_begin_ptr.add(size) };
-        self.capacity_ptr = unsafe { new_begin_ptr.add(capacity) }
+        self.capacity_ptr = unsafe { new_begin_ptr.add(new_capacity) }
     }
 
     /// Incremement the array size
@@ -234,9 +238,9 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
 
     /// Grows the array to fit additional elements
     fn grow(&mut self) {
-        // allocate a new bit of memory
         let new_capacity = Self::calculate_grow_capacity(self.capacity());
-        self.reserve(new_capacity);
+        // reserve the additional needed capacity
+        self.reserve(new_capacity - self.capacity());
     }
 }
 
@@ -266,10 +270,8 @@ impl<T: Sized + Clone, A: Allocator> Vector<T, A> {
     pub fn append(&mut self, buf: &[T]) {
         let old_len = self.len();
         let new_len = old_len + buf.len();
-        // reserve space for the buffer
         if new_len > self.capacity() {
-            // reserve the space
-            self.reserve(new_len);
+            self.reserve(new_len - self.capacity());
         }
 
         // copy in place
@@ -285,7 +287,9 @@ impl<T: Sized + Clone, A: Allocator> Vector<T, A> {
     ///
     /// `buf`: The slice
     pub fn assign(&mut self, buf: &[T]) {
-        self.reserve(buf.len());
+        if buf.len() > self.capacity() {
+            self.reserve(buf.len() - self.capacity());
+        }
 
         unsafe {
             self.end_ptr = self.begin_ptr.add(buf.len());

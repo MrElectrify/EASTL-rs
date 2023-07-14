@@ -11,6 +11,7 @@ repository = "https://github.com/MrElectrify/EASTL-rs"
 keywords = ["EASTL", "STL"]
 
 [dependencies]
+moveit = "0.6.0"
 superslice = "1.0"
 
 [dev-dependencies]
