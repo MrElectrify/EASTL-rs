@@ -5,9 +5,10 @@ use moveit::new::New;
 use moveit::{new, MoveNew, MoveRef};
 use std::ffi::c_void;
 use std::fmt::Debug;
-use std::mem::MaybeUninit;
+use std::mem::{size_of, MaybeUninit};
 use std::ops::Deref;
 use std::pin::Pin;
+use std::ptr::null_mut;
 use std::{mem, ptr};
 
 mod allocator;
@@ -46,7 +47,8 @@ impl<T: Sized, const NODE_COUNT: usize, A: Allocator> FixedVector<T, NODE_COUNT,
     fn init_base_vec(&mut self) {
         self.base_vec.begin_ptr = self.buffer[0].as_mut_ptr();
         self.base_vec.end_ptr = self.buffer[0].as_mut_ptr();
-        self.base_vec.capacity_ptr = (self.buffer[0].as_mut_ptr() as usize + NODE_COUNT) as *mut T;
+        self.base_vec.capacity_ptr =
+            (self.buffer[0].as_mut_ptr() as usize + (NODE_COUNT * size_of::<T>())) as *mut T;
         self.base_vec.allocator.pool_begin = self.buffer[0].as_mut_ptr() as *mut c_void;
     }
 }
@@ -74,6 +76,10 @@ unsafe impl<T: Sized, const NODE_COUNT: usize, A: Allocator> MoveNew
             mem::swap(&mut this.buffer, &mut src.buffer);
             // ... and re-init the base vec pointers point to it
             this.init_base_vec();
+            // we have to fix the end pointer since it will be set to begin_ptr by init_base_vec
+            this.base_vec.end_ptr = (this.base_vec.begin_ptr as usize
+                + (src.base_vec.end_ptr as usize - src.base_vec.begin_ptr as usize))
+                as *mut T;
         } else {
             // We have overflowed - we are not going to use `buffer` anymore so we might as well
             // leave it uninit - so we only copy over the base vec pointers
@@ -81,6 +87,8 @@ unsafe impl<T: Sized, const NODE_COUNT: usize, A: Allocator> MoveNew
             this.base_vec.end_ptr = src.base_vec.end_ptr;
             this.base_vec.capacity_ptr = src.base_vec.capacity_ptr;
         }
+        // zero `src` `begin_ptr` so any allocated data will not be dropped (we pretend like we never allocated it)
+        src.base_vec.begin_ptr = null_mut();
     }
 }
 
@@ -176,7 +184,9 @@ impl<T: Sized + Debug, const NODE_COUNT: usize, A: Allocator> Deref
 #[cfg(test)]
 mod test {
     use crate::fixed_vector::DefaultFixedVector;
-    use moveit::moveit;
+    use moveit::{moveit, MoveNew};
+    use std::mem::MaybeUninit;
+    use std::pin::Pin;
 
     #[test]
     fn push() {
@@ -218,5 +228,38 @@ mod test {
         v.push(2);
         v.push(3);
         assert_eq!(v.iter().sum::<u32>(), 6);
+    }
+
+    #[test]
+    fn move_stack() {
+        moveit! {
+            let mut v = unsafe { DefaultFixedVector::<u32, 10>::new() };
+        };
+        v.push(1);
+        v.push(2);
+        let mut target = MaybeUninit::<DefaultFixedVector<u32, 10>>::uninit();
+        unsafe { MoveNew::move_new(v, Pin::new_unchecked(&mut target)) };
+        let target = unsafe { target.assume_init_ref() };
+        assert!(!target.is_full());
+        assert!(!target.is_empty());
+        assert_eq!(target.len(), 2);
+        assert!(!target.has_overflowed());
+    }
+
+    #[test]
+    fn move_overflow() {
+        moveit! {
+            let mut v = unsafe { DefaultFixedVector::<u32, 10>::new() };
+        };
+        for i in 0..12 {
+            v.push(i);
+        }
+        let mut target = MaybeUninit::<DefaultFixedVector<u32, 10>>::uninit();
+        unsafe { MoveNew::move_new(v, Pin::new_unchecked(&mut target)) };
+        let target = unsafe { target.assume_init_ref() };
+        assert_eq!(target.len(), 12);
+        assert!(target.has_overflowed());
+        assert!(target.is_full());
+        assert_eq!(target.as_slice()[11], 11);
     }
 }
