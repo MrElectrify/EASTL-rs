@@ -24,7 +24,7 @@ impl<T> Default for Greater<T> {
     fn default() -> Self {
         Self {
             _pad: 0,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }
@@ -46,7 +46,7 @@ impl<T> Default for Less<T> {
     fn default() -> Self {
         Self {
             _pad: 0,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }

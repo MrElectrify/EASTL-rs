@@ -92,7 +92,7 @@ impl<'a, T: 'a> Default for CompatIterMut<'a, T> {
             begin: std::ptr::null_mut(),
             end: std::ptr::null_mut(),
             current_array: std::ptr::null_mut(),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }
@@ -210,7 +210,7 @@ impl<'a, T: 'a> RawIter<'a, T> {
             last: end.current as *mut T,
             last_arr: end.current_array as *mut *mut T,
             subarray_size: unsafe { begin.end.offset_from(begin.begin) } as usize,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 
@@ -232,7 +232,7 @@ impl<'a, T: 'a> RawIter<'a, T> {
             last: end.current,
             last_arr: end.current_array,
             subarray_size: unsafe { begin.end.offset_from(begin.begin) } as usize,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }
@@ -369,9 +369,9 @@ impl<'a, T: 'a, A: Allocator> IntoIterator for Queue<'a, T, A> {
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::deque::iter::CompatIterMut;
-    use crate::deque::{DefaultDeque};
+    use crate::deque::DefaultDeque;
     use memoffset::offset_of;
 
     #[test]

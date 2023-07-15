@@ -163,7 +163,7 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> 
             element_count: 0,
             rehash_policy: PrimeRehashPolicy::default(),
             allocator,
-            _markers: PhantomData::default(),
+            _markers: PhantomData,
         }
     }
 

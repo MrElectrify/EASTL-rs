@@ -58,7 +58,7 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
             end_ptr: std::ptr::null_mut(),
             capacity_ptr: std::ptr::null_mut(),
             allocator,
-            _holds_data: PhantomData::default(),
+            _holds_data: PhantomData,
         }
     }
 

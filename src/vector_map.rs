@@ -22,7 +22,7 @@ impl<K: Eq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> 
     pub fn new() -> Self {
         Self {
             base: Vector::new(),
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 
@@ -149,7 +149,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> VectorMap<K, V, A, C> {
     pub unsafe fn new_in(allocator: A) -> Self {
         Self {
             base: Vector::new_in(allocator),
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 

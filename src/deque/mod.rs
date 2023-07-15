@@ -32,12 +32,12 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
 
     /// Provides a reference to the back element, or `None` if the deque is empty.
     pub fn back(&self) -> Option<&T> {
-        self.iter().rev().next()
+        self.iter().next_back()
     }
 
     /// Provides a mutable reference to the back element, or `None` if the deque is empty.
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.iter_mut().rev().next()
+        self.iter_mut().next_back()
     }
 
     /// Provides a reference to the front element, or `None` if the deque is empty.
@@ -415,8 +415,8 @@ impl<'a, T: 'a, A: Allocator + Default> FromIterator<T> for Deque<'a, T, A> {
 
 #[cfg(test)]
 mod test {
-    
-    use crate::deque::{DefaultDeque};
+
+    use crate::deque::DefaultDeque;
     use memoffset::offset_of;
 
     #[test]

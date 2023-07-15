@@ -49,7 +49,7 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
             CompatIter::<'a, K, V> {
                 node_ptr: self.node_ptr,
                 bucket_ptr: self.bucket_iter.as_slice().as_ptr() as *const *const Node<K, V>,
-                _marker: PhantomData::default(),
+                _marker: PhantomData,
             },
             CompatIter::<'a, K, V> {
                 node_ptr: std::ptr::null_mut(),
@@ -57,7 +57,7 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
                     (self.bucket_iter.as_slice().as_ptr() as *const *const Node<K, V>)
                         .add(self.bucket_iter.as_slice().len())
                 },
-                _marker: PhantomData::default(),
+                _marker: PhantomData,
             },
         )
     }
@@ -74,7 +74,7 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
             CompatIterMut::<'a, K, V> {
                 node_ptr: self.node_ptr,
                 bucket_ptr: self.bucket_iter.as_slice().as_ptr(),
-                _marker: PhantomData::default(),
+                _marker: PhantomData,
             },
             CompatIterMut::<'a, K, V> {
                 node_ptr: std::ptr::null_mut(),
@@ -83,7 +83,7 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
                     .as_slice()
                     .as_ptr()
                     .add(self.bucket_iter.as_slice().len()),
-                _marker: PhantomData::default(),
+                _marker: PhantomData,
             },
         )
     }
@@ -341,7 +341,7 @@ impl<'a, K: Eq + 'a, V: 'a> Iterator for IterMut<'a, K, V> {
 
 #[cfg(test)]
 mod test {
-    use crate::internal::hash_table::{DefaultHashTable};
+    use crate::internal::hash_table::DefaultHashTable;
 
     use super::RawIter;
 
