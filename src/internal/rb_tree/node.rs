@@ -75,8 +75,8 @@ impl<K, V> Default for ParentColor<K, V> {
     fn default() -> Self {
         Self {
             raw_ptr: 0,
-            _ignore_key: PhantomData::default(),
-            _ignore_value: PhantomData::default(),
+            _ignore_key: PhantomData,
+            _ignore_value: PhantomData,
         }
     }
 }
@@ -104,7 +104,8 @@ impl<K: Default, V: Default> Default for Node<K, V> {
 }
 
 impl<K, V> Node<K, V> {
-    pub fn _new(
+    // Very UB - Self will be moved out and left/right parent pointers will be wrong. Fix this!
+    /* pub fn _new(
         left: *mut Self,
         right: *mut Self,
         parent: *mut Self,
@@ -123,7 +124,7 @@ impl<K, V> Node<K, V> {
         this._set_left(left);
         this._set_right(right);
         this
-    }
+    } */
 
     /// The color of the node
     pub fn _color(&self) -> Color {
@@ -249,7 +250,7 @@ mod test {
         assert_eq!(node.val(), &0);
     }
 
-    #[test]
+    /* #[test]
     fn non_empty_node() {
         let mut left = Node::<u32, u32>::default();
         let mut right = Node::<u32, u32>::default();
@@ -273,5 +274,5 @@ mod test {
         );
         assert_eq!(parent.key(), &5);
         assert_eq!(parent.val(), &6);
-    }
+    } */
 }
