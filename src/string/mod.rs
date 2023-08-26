@@ -243,6 +243,14 @@ impl<A: Allocator> Display for String<A> {
     }
 }
 
+impl<A: Allocator> PartialEq for String<A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl<A: Allocator> Eq for String<A> {}
+
 impl<A: Allocator + Default> From<&str> for String<A> {
     fn from(s: &str) -> Self {
         unsafe { Self::from_in(s, A::default()) }
@@ -381,5 +389,15 @@ mod test {
 
         s.insert(1, 'c');
         assert_eq!(unsafe { *s.vec.end_ptr }, 0);
+    }
+
+    #[test]
+    fn equals() {
+        let s1 = DefaultString::from("abcd");
+        let s2 = DefaultString::from("abcd");
+        let s3 = DefaultString::from("abce");
+
+        assert!(s1.eq(&s2));
+        assert!(s1.ne(&s3));
     }
 }
