@@ -2,12 +2,12 @@ use crate::allocator::Allocator;
 
 pub(crate) struct NullTerminatorAllocator<A: Allocator>(pub(crate) A);
 
-impl<A: Allocator> Allocator for NullTerminatorAllocator<A> {
-    unsafe fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut () {
+unsafe impl<A: Allocator> Allocator for NullTerminatorAllocator<A> {
+    fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut () {
         // always leave room for the null terminator
         let res = self.0.allocate_raw_aligned(n + 1, align);
         // null terminate
-        *(res as *mut u8).add(n) = 0;
+        *(unsafe { &mut *(res as *mut u8).add(n) }) = 0;
         res
     }
 

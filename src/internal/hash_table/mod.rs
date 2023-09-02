@@ -354,7 +354,7 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> 
             target_bucket = self.bucket_for_key_mut(&key);
         }
         // allocate a new node and add it to the bucket
-        let node = unsafe { self.allocator.allocate::<Node<K, V>>(1) };
+        let node = self.allocator.allocate::<Node<K, V>>(1);
         unsafe {
             std::ptr::write(
                 node as *mut Node<K, V>,

@@ -32,8 +32,8 @@ impl<A: Allocator + Default> Default for FixedVectorAllocator<A> {
     }
 }
 
-impl<A: Allocator> Allocator for FixedVectorAllocator<A> {
-    unsafe fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut () {
+unsafe impl<A: Allocator> Allocator for FixedVectorAllocator<A> {
+    fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut () {
         self.overflow_allocator.allocate_raw_aligned(n, align)
     }
 

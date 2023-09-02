@@ -198,7 +198,7 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
         let size = self.len();
         let new_capacity = self.capacity() + additional;
         // allocate the new buffer
-        let new_begin_ptr = unsafe { self.allocator.allocate::<T>(new_capacity) };
+        let new_begin_ptr = self.allocator.allocate::<T>(new_capacity);
         // copy from the old array if we should
         if !self.begin_ptr.is_null() {
             unsafe {

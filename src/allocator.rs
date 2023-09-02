@@ -1,54 +1,49 @@
 use std::alloc::{self, Layout};
 
-/// An object which allocates memory for use
-pub trait Allocator {
-    /// Allocate an array of `n` items
+/// An object which allocates memory for use.
+///
+/// # Safety
+///
+/// The implementor must ensure that `n` is non-zero, and that the pointers returned are the
+/// specified size and alignment.
+pub unsafe trait Allocator {
+    /// Allocate an array of `n` items. `n` must not be zero.
     ///
     /// # Arguments
     ///
     /// `n`: The number of array elements
-    ///
-    /// # Safety
-    ///
-    /// `T` must be of non-zero size
-    unsafe fn allocate<T>(&mut self, n: usize) -> *mut T {
-        std::mem::transmute(
-            self.allocate_raw_aligned(n * std::mem::size_of::<T>(), std::mem::align_of::<T>()),
-        )
+    fn allocate<T>(&mut self, n: usize) -> *mut T {
+        unsafe {
+            std::mem::transmute(
+                self.allocate_raw_aligned(n * std::mem::size_of::<T>(), std::mem::align_of::<T>()),
+            )
+        }
     }
 
-    /// Allocate `n` bytes aligned to usize
+    /// Allocate `n` bytes aligned to usize. `n` must not be zero.
     ///
     /// # Arguments
     ///
     /// `n`: The number of bytes to allocate
-    ///
-    /// # Safety
-    ///
-    /// `n` must be non-zero
-    unsafe fn allocate_raw(&mut self, n: usize) -> *mut () {
+    fn allocate_raw(&mut self, n: usize) -> *mut () {
         self.allocate_raw_aligned(n, std::mem::size_of::<usize>())
     }
 
-    /// Allocate `n` bytes aligned to `align` bytes
+    /// Allocate `n` bytes aligned to `align` bytes. `n` must not be zero.
     ///
     /// # Arguments
     ///
     /// `n`: The number of bytes to allocate
     ///
     /// `align`: The alignment of the block to allocate
-    ///
-    /// # Safety
-    ///
-    /// `n` must be non-zero
-    unsafe fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut ();
+    fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut ();
 
     /// Deallocates the block `p` of size `n` bytes aligned to usize and returns it to
     /// available memory to re-allocate
     ///
     /// # Safety
     ///
-    /// `p` must be a valid pointer
+    /// `p` must be a valid pointer to an array with size `n`.
     unsafe fn deallocate<T>(&mut self, p: *mut T, n: usize) {
         self.deallocate_raw_aligned(
             std::mem::transmute(p),
@@ -96,11 +91,15 @@ pub struct DefaultAllocator {
     _dummy: u8,
 }
 
-impl Allocator for DefaultAllocator {
-    unsafe fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut () {
-        std::mem::transmute(alloc::alloc(
-            Layout::array::<u8>(n).unwrap().align_to(align).unwrap(),
-        ))
+unsafe impl Allocator for DefaultAllocator {
+    fn allocate_raw_aligned(&mut self, n: usize, align: usize) -> *mut () {
+        assert_ne!(n, 0, "`n` must not be zero!");
+
+        unsafe {
+            std::mem::transmute(alloc::alloc(
+                Layout::array::<u8>(n).unwrap().align_to(align).unwrap(),
+            ))
+        }
     }
 
     unsafe fn deallocate_raw_aligned(&mut self, p: *mut (), n: usize, align: usize) {

@@ -236,7 +236,7 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
 
     /// Allocates a subarray
     fn allocate_subarray(&mut self) -> *mut T {
-        unsafe { self.allocator.allocate::<T>(Self::SUBARRAY_SIZE) }
+        self.allocator.allocate::<T>(Self::SUBARRAY_SIZE)
     }
 
     /// Frees the subarray pointer array
