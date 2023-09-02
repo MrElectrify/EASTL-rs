@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 #[cfg(test)]
 use crate::allocator::DefaultAllocator;
 use crate::equals::{EqualTo, Equals};
+use crate::internal::hash_table::entry::{Entry, VacantEntry};
 use crate::{
     allocator::Allocator,
     hash::{DefaultHash, Hash},
@@ -14,6 +15,7 @@ use self::{
     rehash_policy::PrimeRehashPolicy,
 };
 
+pub(crate) mod entry;
 pub mod iter;
 pub mod node;
 mod rehash_policy;
@@ -66,6 +68,24 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> 
         self.get(key).is_some()
     }
 
+    /// Gets the given key’s corresponding entry in the map for in-place manipulation.
+    ///
+    /// `key`: The key.
+    pub fn entry(&mut self, key: K) -> Entry<K, V, A, H, E> {
+        let target_bucket = self.bucket_for_key_mut(&key);
+        if let Some(existing_node) =
+            Self::find_in_bucket_mut(unsafe { (*target_bucket).as_mut() }, &key)
+        {
+            Entry::Occupied(existing_node)
+        } else {
+            Entry::Vacant(VacantEntry {
+                table: self,
+                target_bucket: unsafe { &mut *target_bucket },
+                key,
+            })
+        }
+    }
+
     /// Fetches the associated value for a key
     ///
     /// # Arguments
@@ -94,31 +114,14 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> 
     ///
     /// `value`: The associated value
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        let mut target_bucket = self.bucket_for_key_mut(&key);
+        let target_bucket = self.bucket_for_key_mut(&key);
         if let Some(existing_node) =
             Self::find_in_bucket_mut(unsafe { (*target_bucket).as_mut() }, &key)
         {
             Some(std::mem::replace(existing_node.value_mut(), value))
         } else {
-            // check if we need to re-hash
-            if let Some(bucket_count) =
-                self.rehash_policy
-                    .get_rehash_required(self.bucket_count, self.element_count, 1)
-            {
-                self.rehash(bucket_count);
-                // update the target bucket
-                target_bucket = self.bucket_for_key_mut(&key);
-            }
-            // allocate a new node and add it to the bucket
-            let node = unsafe { self.allocator.allocate::<Node<K, V>>(1) };
-            unsafe {
-                std::ptr::write(
-                    node as *mut Node<K, V>,
-                    Node::<K, V>::new(key, value, target_bucket.read()),
-                );
-                target_bucket.write(node);
-            };
-            self.element_count += 1;
+            self.insert_impl(target_bucket, key, value);
+
             None
         }
     }
@@ -326,6 +329,42 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> 
             // zero the pointers
             buckets.fill_with(std::ptr::null_mut)
         }
+    }
+
+    /// Inserts a key-value pair into the hash-table.
+    ///
+    /// # Arguments
+    ///
+    /// `target_bucket`: The target hash bucket, calculated with the hash.  
+    /// `key`: The key of the K-V pair.  
+    /// `value`: The value of the K-V pair.  
+    fn insert_impl(
+        &mut self,
+        mut target_bucket: *mut *mut Node<K, V>,
+        key: K,
+        value: V,
+    ) -> &mut Node<K, V> {
+        // check if we need to re-hash
+        if let Some(bucket_count) =
+            self.rehash_policy
+                .get_rehash_required(self.bucket_count, self.element_count, 1)
+        {
+            self.rehash(bucket_count);
+            // update the target bucket
+            target_bucket = self.bucket_for_key_mut(&key);
+        }
+        // allocate a new node and add it to the bucket
+        let node = unsafe { self.allocator.allocate::<Node<K, V>>(1) };
+        unsafe {
+            std::ptr::write(
+                node as *mut Node<K, V>,
+                Node::<K, V>::new(key, value, target_bucket.read()),
+            );
+            target_bucket.write(node);
+        };
+        self.element_count += 1;
+
+        unsafe { &mut *node }
     }
 
     /// Rehash the table with a new bucket count

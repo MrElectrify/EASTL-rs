@@ -265,7 +265,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
 #[cfg(test)]
 mod test {
     use crate::allocator::DefaultAllocator;
-    use crate::compare::{Less};
+    use crate::compare::Less;
     use memoffset::offset_of;
 
     use super::RBTree;

@@ -1,5 +1,6 @@
 use crate::allocator::DefaultAllocator;
 use crate::equals::{EqualTo, Equals};
+use crate::hash_map::entry::Entry;
 use crate::{
     allocator::Allocator,
     hash::{DefaultHash, Hash},
@@ -9,6 +10,7 @@ use std::fmt::{Debug, Formatter};
 
 use self::iter::{Iter, IterMut};
 
+pub mod entry;
 pub mod iter;
 
 /// Hash map with the default allocator.
@@ -46,6 +48,13 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashMap<K, V, A, H, E> {
     /// `key`: The key to search for
     pub fn contains_key(&self, key: &K) -> bool {
         self.hash_table.contains_key(key)
+    }
+
+    /// Gets the given key’s corresponding entry in the map for in-place manipulation.
+    ///
+    /// `key`: The key.
+    pub fn entry(&mut self, key: K) -> Entry<K, V, A, H, E> {
+        self.hash_table.entry(key).into()
     }
 
     /// Fetches the associated value for a key

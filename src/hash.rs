@@ -112,6 +112,12 @@ impl Hash<str> for DefaultHash<str> {
     }
 }
 
+impl Hash<&str> for DefaultHash<&str> {
+    fn hash(val: &&str) -> usize {
+        DefaultHash::<str>::hash(val)
+    }
+}
+
 impl Hash<*const c_char> for DefaultHash<*const c_char> {
     fn hash(val: &*const c_char) -> usize {
         DefaultHash::<str>::hash(unsafe { CStr::from_ptr(*val) }.to_string_lossy().as_ref())
