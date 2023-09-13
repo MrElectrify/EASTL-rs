@@ -18,7 +18,7 @@ pub struct RBTree<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
     begin: *mut Node<K, V>,
     end: *mut Node<K, V>,
     parent: *mut Node<K, V>,
-    size: usize,
+    size: u32,
     allocator: A,
 }
 
@@ -156,7 +156,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
 
     /// Returns the number of elements in the red-black tree
     pub fn len(&self) -> usize {
-        self.size
+        self.size as usize
     }
 
     /// Removes a key-value pair from the red-black tree,
@@ -292,11 +292,11 @@ mod test {
         );
         assert_eq!(
             offset_of!(DefaultRBTree<u32, u32>, allocator),
-            std::mem::size_of::<usize>() * 5
+            std::mem::size_of::<usize>() * 4 + std::mem::size_of::<u32>()
         );
         assert_eq!(
             std::mem::size_of::<DefaultRBTree<u32, u32>>(),
-            std::mem::size_of::<usize>() * 6
+            std::mem::size_of::<usize>() * 5
         );
     }
 

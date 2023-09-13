@@ -125,11 +125,11 @@ mod test {
     #[test]
     fn align() {
         let mut alloc = DefaultAllocator::default();
-        let aligned_by_4 = unsafe { alloc.allocate_raw_aligned(20, 4) };
+        let aligned_by_4 = alloc.allocate_raw_aligned(20, 4);
         unsafe { alloc.deallocate_raw_aligned(aligned_by_4, 20, 4) };
-        let aligned_by_8 = unsafe { alloc.allocate_raw_aligned(20, 8) };
+        let aligned_by_8 = alloc.allocate_raw_aligned(20, 8);
         unsafe { alloc.deallocate_raw_aligned(aligned_by_8, 20, 8) };
-        let aligned_by_16 = unsafe { alloc.allocate_raw_aligned(20, 16) };
+        let aligned_by_16 = alloc.allocate_raw_aligned(20, 16);
         unsafe { alloc.deallocate_raw_aligned(aligned_by_16, 20, 16) };
         assert_eq!((aligned_by_4 as usize) % 4, 0);
         assert_eq!((aligned_by_8 as usize) % 8, 0);
