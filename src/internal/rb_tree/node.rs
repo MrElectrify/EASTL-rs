@@ -84,8 +84,8 @@ impl<K, V> Default for ParentColor<K, V> {
 #[repr(C)]
 #[derive(Debug)]
 pub(crate) struct Node<K, V> {
-    pub left: *mut Node<K, V>,
     pub right: *mut Node<K, V>,
+    pub left: *mut Node<K, V>,
     pub parent: ParentColor<K, V>,
     key: K,
     val: V,
@@ -94,8 +94,8 @@ pub(crate) struct Node<K, V> {
 impl<K: Default, V: Default> Default for Node<K, V> {
     fn default() -> Self {
         Self {
-            left: std::ptr::null_mut(),
             right: std::ptr::null_mut(),
+            left: std::ptr::null_mut(),
             parent: ParentColor::default(),
             key: K::default(),
             val: V::default(),
