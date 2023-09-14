@@ -12,6 +12,7 @@ A binary-compatible EASTL implementation written in Rust
 - `Queue`
 - `VectorMap`
 - `FixedVector`
+- `List`
 
 * there might be some things missing :)
 
@@ -22,7 +23,6 @@ A binary-compatible EASTL implementation written in Rust
 ## Planned containers
 - `HashMultimap`
 - `HashMultiset`
-- `List`
 - `Map`
 - `Multimap`
 - `Set`
