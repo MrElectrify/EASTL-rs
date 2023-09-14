@@ -65,8 +65,25 @@ impl<T, A: Allocator> List<T, A> {
         node
     }
 
+    /// Drops the given node
+    unsafe fn drop_node(&mut self, node: *mut ListNodeBase<T>) {
+        // Drop the value
+        ptr::drop_in_place(&mut (*(node as *mut ListNode<T>)).value);
+        // Deallocate the memory for the node
+        self.allocator.deallocate(node, size_of::<ListNode<T>>());
+    }
+
+    /// Removes the given node, extracting its value
+    unsafe fn remove_node(&mut self, node: *mut ListNodeBase<T>) -> T {
+        (*node).remove();
+        let value = ptr::read(&(*(node as *mut ListNode<T>)).value);
+        // Deallocate the memory for the node
+        self.allocator.deallocate(node, size_of::<ListNode<T>>());
+        self.size -= 1;
+        value
+    }
+
     /// Get a reference to the front value, if any
-    ///
     ///
     /// # Return
     /// A reference to the front value if present, `None` if the list is empty.
@@ -145,10 +162,8 @@ impl<T, A: Allocator> List<T, A> {
                 let to_drop = next;
                 // Advance the next pointer before we delete the current node
                 next = (*next).next;
-                // Drop the value
-                ptr::drop_in_place(&mut (*(to_drop as *mut ListNode<T>)).value);
-                // Deallocate the memory for the node
-                self.allocator.deallocate(to_drop, size_of::<ListNode<T>>());
+                // Drop the node
+                self.drop_node(to_drop);
             }
         }
         self.init_sentinel_node();
@@ -172,6 +187,32 @@ impl<T, A: Allocator> List<T, A> {
             sentinel_node: &self.node,
             current_node: (&self.node as *const ListNodeBase<T>).cast_mut(),
             marker: Default::default(),
+        }
+    }
+
+    /// Removes the first element in the list, returning its value
+    ///
+    /// # Return
+    /// The first value if present, `None` if the list is empty.
+    pub fn pop_front(&mut self) -> Option<T> {
+        if self.node.next.cast_const() != &self.node {
+            let value = unsafe { self.remove_node(self.node.next) };
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    /// Removes the last element in the list, returning its value
+    ///
+    /// # Return
+    /// The last value if present, `None` if the list is empty.
+    pub fn pop_back(&mut self) -> Option<T> {
+        if self.node.prev.cast_const() != &self.node {
+            let value = unsafe { self.remove_node(self.node.prev) };
+            Some(value)
+        } else {
+            None
         }
     }
 }
@@ -432,5 +473,39 @@ mod test {
         assert_eq!(first_val, &mut 14u32);
         let last_val = iter.last().unwrap();
         assert_eq!(last_val, &mut 6u32);
+    }
+
+    #[test]
+    fn pop_front() {
+        moveit! {
+            let mut list = unsafe { DefaultList::new() };
+        }
+        let hello = "hello".to_string();
+        let world = "world".to_string();
+        list.push_back(hello.clone());
+        list.push_back(world.clone());
+        assert_eq!(list.size(), 2);
+        assert_eq!(list.pop_front(), Some(hello));
+        assert_eq!(list.size(), 1);
+        assert_eq!(list.pop_front(), Some(world));
+        assert!(list.empty());
+        assert_eq!(list.pop_front(), None);
+    }
+
+    #[test]
+    fn pop_back() {
+        moveit! {
+            let mut list = unsafe { DefaultList::new() };
+        }
+        let hello = "hello".to_string();
+        let world = "world".to_string();
+        list.push_back(hello.clone());
+        list.push_back(world.clone());
+        assert_eq!(list.size(), 2);
+        assert_eq!(list.pop_back(), Some(world));
+        assert_eq!(list.size(), 1);
+        assert_eq!(list.pop_back(), Some(hello));
+        assert!(list.empty());
+        assert_eq!(list.pop_front(), None);
     }
 }

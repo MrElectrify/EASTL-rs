@@ -27,13 +27,13 @@ impl<T> ListNodeBase<T> {
         (*(*next).prev).next = self;
         (*next).prev = self;
     }
-    //
-    // // Removes this node from the list that it's in. Assumes that the
-    // // node is within a list and thus that its prev/next pointers are valid.
-    // pub(crate) fn remove(&mut self) {
-    //     self.next.prev = self.prev;
-    //     self.prev.as_ptr().next = self.next;
-    // }
+
+    // Removes this node from the list that it's in. Assumes that the
+    // node is within a list and thus that its prev/next pointers are valid.
+    pub(crate) unsafe fn remove(&mut self) {
+        (*self.next).prev = self.prev;
+        (*self.prev).next = self.next;
+    }
 }
 
 #[repr(C)]
