@@ -10,6 +10,8 @@ mod node;
 /// List with the default allocator.
 pub type DefaultList<V> = List<V, DefaultAllocator>;
 
+/// A doubly linked list.
+/// The API is modelled after `std::collections::LinkedList`.
 #[repr(C)]
 pub struct List<T, A: Allocator> {
     /// Sentinel node, contains the front and back node pointers (prev = back, next = front)
