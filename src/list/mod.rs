@@ -71,14 +71,6 @@ impl<T, A: Allocator> List<T, A> {
         node
     }
 
-    /// Drops the given node
-    unsafe fn drop_node(&mut self, node: *mut ListNodeBase) {
-        // Drop the value
-        ptr::drop_in_place(&mut (*(node as *mut ListNode<T>)).value);
-        // Deallocate the memory for the node
-        self.allocator.deallocate(node, size_of::<ListNode<T>>());
-    }
-
     /// Removes the given node, extracting its value
     unsafe fn remove_node(&mut self, node: *mut ListNodeBase) -> T {
         (*node).remove();
@@ -168,8 +160,10 @@ impl<T, A: Allocator> List<T, A> {
                 let to_drop = next;
                 // Advance the next pointer before we delete the current node
                 next = (*next).next;
-                // Drop the node
-                self.drop_node(to_drop);
+                // Drop the value
+                ptr::drop_in_place(&mut (*(to_drop as *mut ListNode<T>)).value);
+                // Deallocate the memory for the node
+                self.allocator.deallocate(to_drop, size_of::<ListNode<T>>());
             }
         }
         self.init_sentinel_node();
