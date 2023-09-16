@@ -1,10 +1,11 @@
 use crate::allocator::{Allocator, DefaultAllocator};
+use crate::list::iter::{Iter, IterMut};
 use crate::list::node::{ListNode, ListNodeBase};
 use moveit::{new, New};
-use std::marker::PhantomData;
 use std::mem::size_of;
 use std::{fmt, ptr};
 
+mod iter;
 mod node;
 
 /// List with the default allocator.
@@ -222,58 +223,6 @@ impl<T, A: Allocator> List<T, A> {
 impl<T, A: Allocator> Drop for List<T, A> {
     fn drop(&mut self) {
         self.clear()
-    }
-}
-
-pub struct Iter<'a, T: 'a> {
-    len: usize,
-    sentinel_node: *const ListNodeBase<T>,
-    current_node: *mut ListNodeBase<T>,
-    marker: PhantomData<&'a ListNodeBase<T>>,
-}
-
-impl<'a, T> Iterator for Iter<'a, T> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if unsafe { (*self.current_node).next.cast_const() } == self.sentinel_node {
-            None
-        } else {
-            self.len -= 1;
-            self.current_node = unsafe { (*self.current_node).next };
-            let node = self.current_node as *const ListNode<T>;
-            Some(unsafe { (*node).value() })
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.len, Some(self.len))
-    }
-}
-
-pub struct IterMut<'a, T: 'a> {
-    len: usize,
-    sentinel_node: *const ListNodeBase<T>,
-    current_node: *mut ListNodeBase<T>,
-    marker: PhantomData<&'a mut ListNodeBase<T>>,
-}
-
-impl<'a, T> Iterator for IterMut<'a, T> {
-    type Item = &'a mut T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if unsafe { (*self.current_node).next.cast_const() } == self.sentinel_node {
-            None
-        } else {
-            self.len -= 1;
-            self.current_node = unsafe { (*self.current_node).next };
-            let node = self.current_node as *mut ListNode<T>;
-            Some(unsafe { (*node).value_mut() })
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.len, Some(self.len))
     }
 }
 
