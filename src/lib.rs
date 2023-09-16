@@ -15,3 +15,4 @@ pub mod set;
 pub mod string;
 pub mod vector;
 pub mod vector_map;
+pub mod list;
