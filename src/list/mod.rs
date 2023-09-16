@@ -121,23 +121,14 @@ impl<T, A: Allocator> List<T, A> {
 
     /// Return a forward iterator for this list
     pub fn iter(&self) -> Iter<'_, T> {
-        Iter {
-            len: self.size(),
-            sentinel_node: &self.node,
-            current_node: (&self.node as *const ListNodeBase).cast_mut(),
-            marker: Default::default(),
-        }
+        Iter::new(&self.node, self.size())
     }
 
     /// Return a mutable forward iterator for this list
     pub fn iter_mut(&self) -> IterMut<'_, T> {
-        IterMut {
-            len: self.size(),
-            sentinel_node: &self.node,
-            current_node: (&self.node as *const ListNodeBase).cast_mut(),
-            marker: Default::default(),
-        }
+        IterMut::new(&self.node, self.size())
     }
+
     /// Removes the last element in the list, returning its value
     ///
     /// # Return

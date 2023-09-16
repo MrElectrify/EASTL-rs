@@ -3,10 +3,21 @@ use std::marker::PhantomData;
 
 /// Iterator over `eastl::List`, yielding references in the list's order
 pub struct Iter<'a, T: 'a> {
-    pub(crate) len: usize,
-    pub(crate) sentinel_node: *const ListNodeBase,
-    pub(crate) current_node: *mut ListNodeBase,
-    pub(crate) marker: PhantomData<&'a ListNode<T>>,
+    sentinel_node: *const ListNodeBase,
+    current_node: *mut ListNodeBase,
+    len: usize,
+    marker: PhantomData<&'a ListNode<T>>,
+}
+
+impl<'a, T> Iter<'a, T> {
+    pub(crate) fn new(sentinel_node: *const ListNodeBase, len: usize) -> Self {
+        Self {
+            sentinel_node,
+            current_node: sentinel_node.cast_mut(),
+            len,
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, T> Iterator for Iter<'a, T> {
@@ -30,10 +41,21 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
 /// Iterator over `eastl::List`, yielding mutable references in the list's order
 pub struct IterMut<'a, T: 'a> {
-    pub(crate) len: usize,
-    pub(crate) sentinel_node: *const ListNodeBase,
-    pub(crate) current_node: *mut ListNodeBase,
-    pub(crate) marker: PhantomData<&'a mut ListNode<T>>,
+    sentinel_node: *const ListNodeBase,
+    current_node: *mut ListNodeBase,
+    len: usize,
+    marker: PhantomData<&'a mut ListNode<T>>,
+}
+
+impl<'a, T> IterMut<'a, T> {
+    pub(crate) fn new(sentinel_node: *const ListNodeBase, len: usize) -> Self {
+        Self {
+            sentinel_node,
+            current_node: sentinel_node.cast_mut(),
+            len,
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, T> Iterator for IterMut<'a, T> {
