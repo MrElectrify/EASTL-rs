@@ -2,6 +2,7 @@ use crate::allocator::{Allocator, DefaultAllocator};
 use crate::list::iter::{Iter, IterMut};
 use crate::list::node::{ListNode, ListNodeBase};
 use moveit::{new, New};
+use std::marker::PhantomData;
 use std::mem::size_of;
 use std::{fmt, ptr};
 
@@ -16,9 +17,10 @@ pub type DefaultList<V> = List<V, DefaultAllocator>;
 #[repr(C)]
 pub struct List<T, A: Allocator> {
     /// Sentinel node, contains the front and back node pointers (prev = back, next = front)
-    node: ListNodeBase<T>,
+    node: ListNodeBase,
     size: u32,
     allocator: A,
+    _holds_data: PhantomData<T>,
 }
 
 impl<T, A: Allocator> List<T, A> {
@@ -34,6 +36,7 @@ impl<T, A: Allocator> List<T, A> {
             node: ListNodeBase::default(),
             size: 0,
             allocator,
+            _holds_data: PhantomData,
         })
         .with(|this| {
             let this = this.get_unchecked_mut();
@@ -69,7 +72,7 @@ impl<T, A: Allocator> List<T, A> {
     }
 
     /// Drops the given node
-    unsafe fn drop_node(&mut self, node: *mut ListNodeBase<T>) {
+    unsafe fn drop_node(&mut self, node: *mut ListNodeBase) {
         // Drop the value
         ptr::drop_in_place(&mut (*(node as *mut ListNode<T>)).value);
         // Deallocate the memory for the node
@@ -77,7 +80,7 @@ impl<T, A: Allocator> List<T, A> {
     }
 
     /// Removes the given node, extracting its value
-    unsafe fn remove_node(&mut self, node: *mut ListNodeBase<T>) -> T {
+    unsafe fn remove_node(&mut self, node: *mut ListNodeBase) -> T {
         (*node).remove();
         let value = ptr::read(&(*(node as *mut ListNode<T>)).value);
         // Deallocate the memory for the node
@@ -178,7 +181,7 @@ impl<T, A: Allocator> List<T, A> {
         Iter {
             len: self.size(),
             sentinel_node: &self.node,
-            current_node: (&self.node as *const ListNodeBase<T>).cast_mut(),
+            current_node: (&self.node as *const ListNodeBase).cast_mut(),
             marker: Default::default(),
         }
     }
@@ -188,7 +191,7 @@ impl<T, A: Allocator> List<T, A> {
         IterMut {
             len: self.size(),
             sentinel_node: &self.node,
-            current_node: (&self.node as *const ListNodeBase<T>).cast_mut(),
+            current_node: (&self.node as *const ListNodeBase).cast_mut(),
             marker: Default::default(),
         }
     }

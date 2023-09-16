@@ -1,27 +1,23 @@
-use std::marker::PhantomData;
 use std::ptr::null_mut;
 
 #[repr(C)]
-pub(crate) struct ListNodeBase<T> {
-    pub(crate) next: *mut ListNodeBase<T>,
-    pub(crate) prev: *mut ListNodeBase<T>,
-    // let's go against the idea that this shouldn't be generic as in the original implementation
-    _holds_data: PhantomData<T>,
+pub(crate) struct ListNodeBase {
+    pub(crate) next: *mut ListNodeBase,
+    pub(crate) prev: *mut ListNodeBase,
 }
 
-impl<T> Default for ListNodeBase<T> {
+impl Default for ListNodeBase {
     fn default() -> Self {
         Self {
             next: null_mut(),
             prev: null_mut(),
-            _holds_data: PhantomData,
         }
     }
 }
 
-impl<T> ListNodeBase<T> {
+impl ListNodeBase {
     /// Inserts this node in `next`s list before `next`.
-    pub(crate) unsafe fn insert(&mut self, next: *mut ListNodeBase<T>) {
+    pub(crate) unsafe fn insert(&mut self, next: *mut ListNodeBase) {
         self.next = next;
         self.prev = (*next).prev;
         (*(*next).prev).next = self;
@@ -38,7 +34,7 @@ impl<T> ListNodeBase<T> {
 
 #[repr(C)]
 pub(crate) struct ListNode<T> {
-    pub(crate) base: ListNodeBase<T>,
+    pub(crate) base: ListNodeBase,
     pub(crate) value: T,
 }
 
