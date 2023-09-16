@@ -44,60 +44,10 @@ impl<T, A: Allocator> List<T, A> {
         })
     }
 
-    // Init list sentinel node
-    fn init_sentinel_node(&mut self) {
-        self.node.prev = &mut self.node;
-        self.node.next = &mut self.node;
-    }
-
-    /// Get the list's size
-    pub fn size(&self) -> usize {
-        self.size as usize
-    }
-
-    /// If the list is empty or not
-    pub fn empty(&self) -> bool {
-        self.size() == 0
-    }
-
-    unsafe fn create_node(&mut self, value: T) -> *mut ListNode<T> {
-        let node = unsafe {
-            self.allocator
-                .allocate::<ListNode<T>>(size_of::<ListNode<T>>())
-                .as_mut()
-        }
-        .unwrap();
-        ptr::write(node.value_mut(), value);
-        node
-    }
-
-    /// Removes the given node, extracting its value
-    unsafe fn remove_node(&mut self, node: *mut ListNodeBase) -> T {
-        (*node).remove();
-        let value = ptr::read(&(*(node as *mut ListNode<T>)).value);
-        // Deallocate the memory for the node
-        self.allocator.deallocate(node, size_of::<ListNode<T>>());
-        self.size -= 1;
-        value
-    }
-
-    /// Get a reference to the front value, if any
+    /// Get a reference to the last value, if any
     ///
     /// # Return
-    /// A reference to the front value if present, `None` if the list is empty.
-    pub fn front(&self) -> Option<&T> {
-        if self.node.next.cast_const() != &self.node {
-            // this cast works as the base is the first struct member of ListNode
-            Some(unsafe { (*(self.node.next as *const ListNode<T>)).value() })
-        } else {
-            None
-        }
-    }
-
-    /// Get a reference to the back value, if any
-    ///
-    /// # Return
-    /// A reference to the back value if present, `None` if the list is empty.
+    /// A reference to the last value if present, `None` if the list is empty.
     pub fn back(&self) -> Option<&T> {
         if self.node.prev.cast_const() != &self.node {
             // this cast works as the base is the first struct member of ListNode
@@ -107,23 +57,10 @@ impl<T, A: Allocator> List<T, A> {
         }
     }
 
-    /// Get a mutable reference to the front value, if any
+    /// Get a mutable reference to the last value, if any
     ///
     /// # Return
-    /// A mutable reference to the front value if present, `None` if the list is empty.
-    pub fn front_mut(&mut self) -> Option<&mut T> {
-        if self.node.next.cast_const() != &self.node {
-            // this cast works as the base is the first struct member of ListNode
-            Some(unsafe { &mut ((*(self.node.next as *mut ListNode<T>)).value) })
-        } else {
-            None
-        }
-    }
-
-    /// Get a mutable reference to the back value, if any
-    ///
-    /// # Return
-    /// A mutable reference to the back value if present, `None` if the list is empty.
+    /// A mutable reference to the last value if present, `None` if the list is empty.
     pub fn back_mut(&mut self) -> Option<&mut T> {
         if self.node.prev.cast_const() != &self.node {
             // this cast works as the base is the first struct member of ListNode
@@ -131,25 +68,6 @@ impl<T, A: Allocator> List<T, A> {
         } else {
             None
         }
-    }
-
-    /// Push a value to the front of the list
-    pub fn push_front(&mut self, value: T) {
-        unsafe {
-            let new_node = self.create_node(value);
-            (*new_node).base.insert(self.node.next);
-        }
-
-        self.size += 1;
-    }
-
-    /// Push a value to the back of the list
-    pub fn push_back(&mut self, value: T) {
-        unsafe {
-            let new_node = self.create_node(value);
-            (*new_node).base.insert(&mut self.node);
-        }
-        self.size += 1;
     }
 
     /// Remove all elements from this list
@@ -168,6 +86,37 @@ impl<T, A: Allocator> List<T, A> {
         }
         self.init_sentinel_node();
         self.size = 0;
+    }
+
+    /// If the list is empty or not
+    pub fn empty(&self) -> bool {
+        self.size() == 0
+    }
+
+    /// Get a reference to the first value, if any
+    ///
+    /// # Return
+    /// A reference to the first value if present, `None` if the list is empty.
+    pub fn front(&self) -> Option<&T> {
+        if self.node.next.cast_const() != &self.node {
+            // this cast works as the base is the first struct member of ListNode
+            Some(unsafe { (*(self.node.next as *const ListNode<T>)).value() })
+        } else {
+            None
+        }
+    }
+
+    /// Get a mutable reference to the first value, if any
+    ///
+    /// # Return
+    /// A mutable reference to the first value if present, `None` if the list is empty.
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        if self.node.next.cast_const() != &self.node {
+            // this cast works as the base is the first struct member of ListNode
+            Some(unsafe { &mut ((*(self.node.next as *mut ListNode<T>)).value) })
+        } else {
+            None
+        }
     }
 
     /// Return a forward iterator for this list
@@ -189,6 +138,18 @@ impl<T, A: Allocator> List<T, A> {
             marker: Default::default(),
         }
     }
+    /// Removes the last element in the list, returning its value
+    ///
+    /// # Return
+    /// The last value if present, `None` if the list is empty.
+    pub fn pop_back(&mut self) -> Option<T> {
+        if self.node.prev.cast_const() != &self.node {
+            let value = unsafe { self.remove_node(self.node.prev) };
+            Some(value)
+        } else {
+            None
+        }
+    }
 
     /// Removes the first element in the list, returning its value
     ///
@@ -203,17 +164,56 @@ impl<T, A: Allocator> List<T, A> {
         }
     }
 
-    /// Removes the last element in the list, returning its value
-    ///
-    /// # Return
-    /// The last value if present, `None` if the list is empty.
-    pub fn pop_back(&mut self) -> Option<T> {
-        if self.node.prev.cast_const() != &self.node {
-            let value = unsafe { self.remove_node(self.node.prev) };
-            Some(value)
-        } else {
-            None
+    /// Push a value to the back of the list
+    pub fn push_back(&mut self, value: T) {
+        unsafe {
+            let new_node = self.create_node(value);
+            (*new_node).base.insert(&mut self.node);
         }
+        self.size += 1;
+    }
+
+    /// Push a value to the front of the list
+    pub fn push_front(&mut self, value: T) {
+        unsafe {
+            let new_node = self.create_node(value);
+            (*new_node).base.insert(self.node.next);
+        }
+
+        self.size += 1;
+    }
+
+    /// Get the list's size
+    pub fn size(&self) -> usize {
+        self.size as usize
+    }
+
+    // Allocate and initialise a new node
+    unsafe fn create_node(&mut self, value: T) -> *mut ListNode<T> {
+        let node = unsafe {
+            self.allocator
+                .allocate::<ListNode<T>>(size_of::<ListNode<T>>())
+                .as_mut()
+        }
+        .unwrap();
+        ptr::write(node.value_mut(), value);
+        node
+    }
+
+    // Init list sentinel node
+    fn init_sentinel_node(&mut self) {
+        self.node.prev = &mut self.node;
+        self.node.next = &mut self.node;
+    }
+
+    /// Removes the given node, extracting its value
+    unsafe fn remove_node(&mut self, node: *mut ListNodeBase) -> T {
+        (*node).remove();
+        let value = ptr::read(&(*(node as *mut ListNode<T>)).value);
+        // Deallocate the memory for the node
+        self.allocator.deallocate(node, size_of::<ListNode<T>>());
+        self.size -= 1;
+        value
     }
 }
 
