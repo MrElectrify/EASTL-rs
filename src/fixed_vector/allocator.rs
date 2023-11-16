@@ -43,3 +43,6 @@ unsafe impl<A: Allocator> Allocator for FixedVectorAllocator<A> {
         }
     }
 }
+
+unsafe impl<A: Allocator + Send> Send for FixedVectorAllocator<A> {}
+unsafe impl<A: Allocator + Sync> Sync for FixedVectorAllocator<A> {}
