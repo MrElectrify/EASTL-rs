@@ -40,7 +40,8 @@ pub struct HashTable<K: Eq, V, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equ
     _markers: PhantomData<(K, V, H, E)>,
 }
 
-static EMPTY_BUCKET_ARR: [usize; 2] = [0; 2];
+/// Two entries - a null entry and the sentinel.
+static EMPTY_BUCKET_ARR: [usize; 2] = [0, !0];
 
 impl<K: Eq, V, A: Allocator + Default> HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
@@ -371,12 +372,15 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> 
     /// `bucket_count`: The desired bucket count
     fn rehash(&mut self, bucket_count: u32) {
         let new_buckets = unsafe {
+            // allocate space for the sentinel
             std::slice::from_raw_parts_mut(
-                self.allocator.allocate(bucket_count as usize),
-                bucket_count as usize,
+                self.allocator.allocate((bucket_count + 1) as usize),
+                (bucket_count + 1) as usize,
             )
         };
         new_buckets.fill_with(std::ptr::null_mut);
+        // set the sentinel
+        new_buckets[bucket_count as usize] = !0 as *mut _;
         // transfer nodes over
         self.buckets_mut()
             .iter_mut()
@@ -478,6 +482,12 @@ mod test {
         let ht: DefaultHashTable<u32, u32> = DefaultHashTable::default();
         assert!(ht.get(&5).is_none());
         assert!(ht.is_empty());
+
+        // check for the sentinel
+        assert_eq!(
+            unsafe { *ht.bucket_array.add(ht.bucket_count as usize) } as usize,
+            !0
+        );
     }
 
     #[test]
@@ -491,6 +501,12 @@ mod test {
         assert_eq!(ht.get(&5), Some((&5, &6)));
         assert_eq!(ht.get(&6), Some((&6, &7)));
         assert_eq!(ht.get(&7), None);
+
+        // check for the sentinel
+        assert_eq!(
+            unsafe { *ht.bucket_array.add(ht.bucket_count as usize) } as usize,
+            !0
+        );
     }
 
     #[test]
