@@ -171,6 +171,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
     pub unsafe fn iter(self: Self) -> Iter<K, V> {
         Iter {
             node: self.begin,
+            end: self.end,
             _marker: PhantomData,
         }
     }
