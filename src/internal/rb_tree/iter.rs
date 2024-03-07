@@ -4,7 +4,7 @@ use std::ptr;
 
 /// An iterator over a Red-Black tree's nodes.
 pub struct Iter<'a, K, V> {
-    pub(super) node: *mut Node<K, V>,
+    pub(super) node: *const Node<K, V>,
     pub(super) anchor: *const (),
     pub(super) _marker: PhantomData<&'a ()>,
 }
@@ -25,7 +25,11 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
 
         unsafe { self.node.as_ref() }
             .and_then(Node::next)
-            .map(|node| (node.key(), node.val()))
+            .map(|node| {
+                // update the iterator
+                self.node = node;
+                (node.key(), node.val())
+            })
     }
 }
 
@@ -39,6 +43,10 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
 
         unsafe { self.node.as_mut() }
             .and_then(Node::next_mut)
-            .map(|node| (&node.pair.0, &mut node.pair.1))
+            .map(|node| {
+                // update the iterator
+                self.node = node;
+                (&node.pair.0, &mut node.pair.1)
+            })
     }
 }
