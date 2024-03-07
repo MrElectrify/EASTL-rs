@@ -170,7 +170,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
     #[allow(clippy::needless_arbitrary_self_type)]
     pub unsafe fn iter(self: Self) -> Iter<K, V> {
         Iter {
-            node: self.parent,
+            node: self.begin,
             _marker: PhantomData,
         }
     }
