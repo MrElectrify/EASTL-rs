@@ -1,8 +1,11 @@
+use crate::internal::rb_tree::iter::{Iter, IterMut};
 use crate::{
     allocator::Allocator,
     compare::{Compare, Less},
     internal::rb_tree::RBTree,
 };
+use duplicate::duplicate_item;
+use std::fmt::{Debug, Formatter};
 
 /// A map backed by a red-black tree that is always ordered.
 /// Insertion, lookup, and removal are O(nlgn). If you do not
@@ -103,6 +106,20 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> Map<K, V, A, C> {
         self.inner.is_empty()
     }
 
+    /// Returns an iterator over the elements in the tree.
+    ///
+    /// # Safety
+    /// This iterator is not tested as trees are only partially implemented.
+    #[duplicate_item(
+        iter        Self        Iter;
+        [iter]      [&Self]     [Iter];
+        [iter_mut]  [&mut Self] [IterMut];
+    )]
+    #[allow(clippy::needless_arbitrary_self_type)]
+    pub unsafe fn iter(self: Self) -> Iter<K, V> {
+        self.inner.iter()
+    }
+
     /// Returns the number of elements in the map
     pub fn len(&self) -> usize {
         self.inner.len()
@@ -127,6 +144,19 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> Map<K, V, A, C> {
     /// `key`: The key to index the pair
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         self.inner.remove_entry(key)
+    }
+}
+
+impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for Map<K, V, A, C> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{{}}}",
+            unsafe { self.iter() }
+                .map(|(k, v)| format!("{k:?}: {v:?}"))
+                .collect::<Vec<String>>()
+                .join(",")
+        )
     }
 }
 

@@ -1,10 +1,14 @@
+use crate::internal::rb_tree::iter::{Iter, IterMut};
 use crate::{
     allocator::Allocator,
     compare::{Compare, Less},
 };
+use duplicate::duplicate_item;
+use std::marker::PhantomData;
 
 use self::node::Node;
 
+pub mod iter;
 mod node;
 
 #[repr(C)]
@@ -152,6 +156,23 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
     /// Returns true if the red-black tree contains no elements
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Returns an iterator over the elements in the tree.
+    ///
+    /// # Safety
+    /// This iterator is not tested as trees are only partially implemented.
+    #[duplicate_item(
+        iter        Self        Iter;
+        [iter]      [&Self]     [Iter];
+        [iter_mut]  [&mut Self] [IterMut];
+    )]
+    #[allow(clippy::needless_arbitrary_self_type)]
+    pub unsafe fn iter(self: Self) -> Iter<K, V> {
+        Iter {
+            node: self.parent,
+            _marker: PhantomData,
+        }
     }
 
     /// Returns the number of elements in the red-black tree

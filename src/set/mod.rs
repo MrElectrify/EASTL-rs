@@ -77,6 +77,14 @@ impl<K: Eq, A: Allocator, C: Compare<K>> Set<K, A, C> {
         self.inner._insert(key, ()).is_some()
     }
 
+    /// Returns an iterator over the elements in the tree.
+    ///
+    /// # Safety
+    /// This iterator is not tested as trees are only partially implemented.
+    pub unsafe fn iter(&self) -> impl Iterator<Item = &K> {
+        self.inner.iter().map(|(k, _)| k)
+    }
+
     /// Returns true if the set contains no elements
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()

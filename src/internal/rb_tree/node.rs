@@ -1,4 +1,5 @@
-use std::{fmt::Debug, marker::PhantomData};
+use duplicate::duplicate_item;
+use std::{fmt::Debug, marker::PhantomData, ptr};
 
 /// The color of a red-black tree node
 #[repr(C)]
@@ -87,8 +88,7 @@ pub(crate) struct Node<K, V> {
     pub right: *mut Node<K, V>,
     pub left: *mut Node<K, V>,
     pub parent: ParentColor<K, V>,
-    key: K,
-    val: V,
+    pub(crate) pair: (K, V),
 }
 
 impl<K: Default, V: Default> Default for Node<K, V> {
@@ -97,8 +97,7 @@ impl<K: Default, V: Default> Default for Node<K, V> {
             right: std::ptr::null_mut(),
             left: std::ptr::null_mut(),
             parent: ParentColor::default(),
-            key: K::default(),
-            val: V::default(),
+            pair: (K::default(), V::default()),
         }
     }
 }
@@ -193,19 +192,53 @@ impl<K, V> Node<K, V> {
         old_right
     }
 
+    /// Returns the next node in the tree, in increasing order.
+    ///
+    /// # Safety
+    /// This method returns
+    #[duplicate_item(
+        next        Self        Node;
+        [next]      [Self]      [Node];
+        [next_mut]  [mut Self]  [mut Node]
+    )]
+    pub fn next(mut self: &Self) -> Option<&Node<K, V>> {
+        if let Some(mut right_node) = unsafe { self.right.as_mut() } {
+            // the successor lies in the right subtree. find the smallest value in the greater
+            // subtree, which is the left-most node.
+            while let Some(left_node) = unsafe { right_node.left.as_mut() } {
+                right_node = left_node
+            }
+
+            Some(right_node)
+        } else {
+            // the successor is contained within the ancestors. find the first node that is its
+            // parent's left node (meaning the parent is the first node greater than the node)
+            // safety: the parent of a node is always present, because the parent of the root node
+            // is inside the tree itself
+            let mut parent = unsafe { &mut *self.parent.ptr() };
+            while ptr::eq(self as *const _, parent.right as *const _) {
+                let parent_parent = unsafe { &mut *parent.parent.ptr() };
+                self = parent;
+                parent = parent_parent;
+            }
+
+            Some(parent)
+        }
+    }
+
     /// The key stored in the node
     pub fn key(&self) -> &K {
-        &self.key
+        &self.pair.0
     }
 
     /// The value stored in the node
     pub fn val(&self) -> &V {
-        &self.val
+        &self.pair.1
     }
 
     /// The value stored in the node
     pub fn val_mut(&mut self) -> &mut V {
-        &mut self.val
+        &mut self.pair.1
     }
 }
 
