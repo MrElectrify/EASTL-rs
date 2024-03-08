@@ -201,7 +201,7 @@ impl<K, V> Node<K, V> {
         [next]      [Self]      [Node];
         [next_mut]  [mut Self]  [mut Node]
     )]
-    pub fn next(mut self: &Self) -> Option<&Node<K, V>> {
+    pub fn next(mut self: &Self) -> &Node<K, V> {
         if let Some(mut right_node) = unsafe { self.right.as_mut() } {
             // the successor lies in the right subtree. find the smallest value in the greater
             // subtree, which is the left-most node.
@@ -209,7 +209,7 @@ impl<K, V> Node<K, V> {
                 right_node = left_node
             }
 
-            Some(right_node)
+            right_node
         } else {
             // the successor is contained within the ancestors. find the first node that is its
             // parent's left node (meaning the parent is the first node greater than the node)
@@ -228,7 +228,7 @@ impl<K, V> Node<K, V> {
                 self = parent;
             }
 
-            Some(self)
+            self
         }
     }
 

@@ -23,13 +23,11 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
             return None;
         }
 
-        unsafe { self.node.as_ref() }
-            .and_then(Node::next)
-            .map(|node| {
-                // update the iterator
-                self.node = node;
-                (node.key(), node.val())
-            })
+        unsafe { self.node.as_ref() }.map(|node| {
+            // update the iterator
+            self.node = node.next();
+            (node.key(), node.val())
+        })
     }
 }
 
@@ -41,12 +39,10 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
             return None;
         }
 
-        unsafe { self.node.as_mut() }
-            .and_then(Node::next_mut)
-            .map(|node| {
-                // update the iterator
-                self.node = node;
-                (&node.pair.0, &mut node.pair.1)
-            })
+        unsafe { self.node.as_mut() }.map(|node| {
+            // update the iterator
+            self.node = node.next_mut();
+            (&node.pair.0, &mut node.pair.1)
+        })
     }
 }
