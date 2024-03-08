@@ -222,7 +222,13 @@ impl<K, V> Node<K, V> {
                 parent = parent_parent;
             }
 
-            Some(parent)
+            // I have deliberated on this and truly have no clue why we are doing this, but it works
+            // and is how it is originally implemented
+            if !ptr::eq(self.right, parent) {
+                self = parent;
+            }
+
+            Some(self)
         }
     }
 
