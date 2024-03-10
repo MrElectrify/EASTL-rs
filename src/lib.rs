@@ -6,7 +6,6 @@ pub mod allocator;
 pub mod compare;
 pub mod deque;
 pub mod equals;
-#[cfg(feature = "nightly")]
 pub mod fixed_list;
 mod fixed_pool;
 pub mod fixed_vector;

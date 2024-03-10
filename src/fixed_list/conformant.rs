@@ -178,7 +178,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::allocator::DefaultAllocator;
-    use crate::fixed_list::DefaultFixedList;
+    use crate::fixed_list::conformant::DefaultFixedList;
     use crate::fixed_pool::with_overflow::FixedPoolWithOverflow;
     use crate::list::node::{ListNode, ListNodeBase};
     use memoffset::offset_of;
