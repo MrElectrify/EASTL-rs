@@ -6,8 +6,8 @@ use std::marker::PhantomData;
 use std::mem::size_of;
 use std::{fmt, ptr};
 
-mod iter;
-mod node;
+pub(crate) mod iter;
+pub(crate) mod node;
 
 /// List with the default allocator.
 pub type DefaultList<V> = List<V, DefaultAllocator>;
@@ -17,10 +17,10 @@ pub type DefaultList<V> = List<V, DefaultAllocator>;
 #[repr(C)]
 pub struct List<T, A: Allocator> {
     /// Sentinel node, contains the front and back node pointers (prev = back, next = front)
-    node: ListNodeBase,
-    size: u32,
-    allocator: A,
-    _holds_data: PhantomData<T>,
+    pub(crate) node: ListNodeBase,
+    pub(crate) size: u32,
+    pub(crate) allocator: A,
+    pub(crate) _holds_data: PhantomData<T>,
 }
 
 impl<T, A: Allocator> List<T, A> {
@@ -181,18 +181,13 @@ impl<T, A: Allocator> List<T, A> {
 
     // Allocate and initialise a new node
     unsafe fn create_node(&mut self, value: T) -> *mut ListNode<T> {
-        let node = unsafe {
-            self.allocator
-                .allocate::<ListNode<T>>(size_of::<ListNode<T>>())
-                .as_mut()
-        }
-        .unwrap();
+        let node = unsafe { self.allocator.allocate::<ListNode<T>>(1).as_mut() }.unwrap();
         ptr::write(node.value_mut(), value);
         node
     }
 
     // Init list sentinel node
-    fn init_sentinel_node(&mut self) {
+    pub(crate) fn init_sentinel_node(&mut self) {
         self.node.prev = &mut self.node;
         self.node.next = &mut self.node;
     }
