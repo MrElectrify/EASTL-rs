@@ -3,7 +3,6 @@ use crate::compare::{Compare, Less};
 use crate::vector::Vector;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use superslice::Ext;
 
@@ -14,7 +13,7 @@ pub type DefaultVectorMap<K, V, C = Less<K>> = VectorMap<K, V, DefaultAllocator,
 #[repr(C)]
 pub struct VectorMap<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
     base: Vector<(K, V), A>,
-    _phantom: PhantomData<C>,
+    _compare: C,
 }
 
 impl<K: Eq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> {
@@ -22,7 +21,7 @@ impl<K: Eq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> 
     pub fn new() -> Self {
         Self {
             base: Vector::new(),
-            _phantom: PhantomData,
+            _compare: Less::default(),
         }
     }
 
@@ -34,12 +33,12 @@ impl<K: Eq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> 
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             base: Vector::with_capacity(capacity),
-            _phantom: Default::default(),
+            _compare: Less::default(),
         }
     }
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K>> VectorMap<K, V, A, C> {
+impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> VectorMap<K, V, A, C> {
     /// Returns the capacity of the vector map
     pub fn capacity(&self) -> usize {
         self.base.capacity()
@@ -149,7 +148,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> VectorMap<K, V, A, C> {
     pub unsafe fn new_in(allocator: A) -> Self {
         Self {
             base: Vector::new_in(allocator),
-            _phantom: PhantomData,
+            _compare: C::default(),
         }
     }
 
@@ -290,7 +289,7 @@ mod test {
     fn layout() {
         assert_eq!(
             std::mem::size_of::<DefaultVectorMap<u32, u32>>(),
-            std::mem::size_of::<usize>() * 4
+            std::mem::size_of::<usize>() * 5
         );
     }
 
