@@ -7,6 +7,7 @@ pub mod compare;
 pub mod deque;
 pub mod equals;
 pub mod fixed_list;
+pub mod fixed_map;
 mod fixed_pool;
 pub mod fixed_vector;
 pub mod hash;

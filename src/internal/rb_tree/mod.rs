@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use self::node::Node;
 
 pub mod iter;
-mod node;
+pub(crate) mod node;
 
 #[repr(C)]
 pub struct RBTree<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
@@ -23,7 +23,7 @@ pub struct RBTree<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
     end: *mut Node<K, V>,
     parent: *mut Node<K, V>,
     size: u32,
-    allocator: A,
+    pub(crate) allocator: A,
 }
 
 impl<K: Eq, V, A: Allocator + Default, C: Compare<K> + Default> RBTree<K, V, A, C> {

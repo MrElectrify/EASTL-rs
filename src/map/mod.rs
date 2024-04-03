@@ -13,7 +13,7 @@ use std::fmt::{Debug, Formatter};
 /// for those operations
 #[derive(Default)]
 pub struct Map<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
-    inner: RBTree<K, V, A, C>,
+    pub(crate) inner: RBTree<K, V, A, C>,
 }
 
 impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> Map<K, V, A, C> {
