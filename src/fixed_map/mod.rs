@@ -20,7 +20,6 @@ pub type DefaultFixedList<K, V, const NODE_COUNT: usize, C> =
     FixedMap<K, V, NODE_COUNT, DefaultAllocator, C>;
 
 #[repr(C)]
-#[allow(private_bounds)]
 pub struct FixedMap<
     K: Eq,
     V,
@@ -28,13 +27,15 @@ pub struct FixedMap<
     OverflowAllocator: Allocator,
     C: Compare<K> = Less<K>,
 > {
+    // real EASTL uses a fixed_node_pool here, which is just fixed_pool_with_overflow templated
+    // by node size instead of type, so it does not matter and we use fixed_pool_with_overflow
+    // directly
     base_map: Map<K, V, FixedPoolWithOverflow<Node<K, V>, OverflowAllocator>, C>,
     // this should `technically` be conformant - `buffer` should be aligned to the alignment of
     // `ListNode<T>`...
     buffer: [MaybeUninit<Node<K, V>>; NODE_COUNT],
 }
 
-#[allow(private_bounds)]
 impl<K: Eq, V, const NODE_COUNT: usize, OverflowAllocator: Allocator, C: Compare<K> + Default>
     FixedMap<K, V, NODE_COUNT, OverflowAllocator, C>
 {
