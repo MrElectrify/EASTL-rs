@@ -1,5 +1,7 @@
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::deque::iter::{CompatIterMut, Iter, IterMut};
+use itertools::Itertools;
+use std::fmt::{Debug, Formatter};
 
 pub mod iter;
 
@@ -10,7 +12,7 @@ pub type DefaultDeque<'a, V> = Deque<'a, V, DefaultAllocator>;
 #[repr(C)]
 pub struct Deque<'a, T: 'a, A: Allocator> {
     ptr_array: *mut *mut T,
-    ptr_array_size: usize,
+    ptr_array_size: u32,
     begin_it: CompatIterMut<'a, T>,
     end_it: CompatIterMut<'a, T>,
     allocator: A,
@@ -27,7 +29,7 @@ impl<'a, T: 'a, A: Allocator + Default> Deque<'a, T, A> {
 }
 
 impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
-    const INITIAL_PTR_ARRAY_SIZE: usize = 8;
+    const INITIAL_PTR_ARRAY_SIZE: u32 = 8;
     const SUBARRAY_SIZE: usize = Self::calculate_subarray_size();
 
     /// Provides a reference to the back element, or `None` if the deque is empty.
@@ -174,7 +176,9 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
             }
         } else {
             // see if we need to allocate more pointers
-            if self.end_it.current_array == unsafe { self.ptr_array.add(self.ptr_array_size - 1) } {
+            if self.end_it.current_array
+                == unsafe { self.ptr_array.add(self.ptr_array_size as usize - 1) }
+            {
                 self.realloc_ptr_array(1, false);
             }
             // write our element to the last position in the subarray
@@ -243,7 +247,7 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
     fn free_ptr_array(&mut self) {
         unsafe {
             self.allocator
-                .deallocate(self.ptr_array, self.ptr_array_size)
+                .deallocate(self.ptr_array, self.ptr_array_size as usize)
         }
     }
 
@@ -277,11 +281,11 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
         self.ptr_array_size = Self::INITIAL_PTR_ARRAY_SIZE;
 
         // allocate the subarrays
-        let ptr_array = self.allocate_ptr_array(self.ptr_array_size);
+        let ptr_array = self.allocate_ptr_array(self.ptr_array_size as usize);
         ptr_array.fill_with(std::ptr::null_mut);
 
         // we start with an empty deque, so only allocate the first array mid-way through
-        ptr_array[(Self::INITIAL_PTR_ARRAY_SIZE - 1) / 2] = self.allocate_subarray();
+        ptr_array[((Self::INITIAL_PTR_ARRAY_SIZE - 1) / 2) as usize] = self.allocate_subarray();
 
         // setup the iterators
         unsafe {
@@ -311,12 +315,12 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
                 .current_array
                 .offset_from(self.begin_it.current_array)
         } + 1) as usize;
-        let unused_ptrs_at_back = (self.ptr_array_size - unused_ptrs_at_front) - used_ptrs;
+        let unused_ptrs_at_back = (self.ptr_array_size as usize - unused_ptrs_at_front) - used_ptrs;
         let current_array_start =
             unsafe { self.begin_it.current_array.offset_from(self.ptr_array) } as usize;
         let current_array_end = current_array_start + used_ptrs;
         let ptr_array =
-            unsafe { std::slice::from_raw_parts_mut(self.ptr_array, self.ptr_array_size) };
+            unsafe { std::slice::from_raw_parts_mut(self.ptr_array, self.ptr_array_size as usize) };
 
         let new_array_start;
 
@@ -346,9 +350,9 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
             ptr_array.copy_within(current_array_start..current_array_end, new_array_start);
         } else {
             let new_ptr_array_size =
-                self.ptr_array_size + self.ptr_array_size.max(additional_capacity) + 2;
+                self.ptr_array_size + self.ptr_array_size.max(additional_capacity as u32) + 2;
             // allocate at least double + 2 pointers
-            let new_ptr_array = self.allocate_ptr_array(new_ptr_array_size);
+            let new_ptr_array = self.allocate_ptr_array(new_ptr_array_size as usize);
 
             // copy the old pointers over
             new_array_start = unused_ptrs_at_front + if front { additional_capacity } else { 0 };
@@ -373,6 +377,12 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
                 Self::SUBARRAY_SIZE,
             )
         };
+    }
+}
+
+impl<'a, T: 'a + Debug, A: Allocator> Debug for Deque<'a, T, A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[ {:?} ]", self.iter().format(", "))
     }
 }
 

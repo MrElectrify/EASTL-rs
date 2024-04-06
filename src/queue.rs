@@ -1,6 +1,7 @@
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::deque::iter::{Iter, IterMut};
 use crate::deque::Deque;
+use std::fmt::{Debug, Formatter};
 
 /// Queue with the default allocator.
 pub type DefaultQueue<'a, V> = Queue<'a, V, DefaultAllocator>;
@@ -77,6 +78,12 @@ impl<'a, T: 'a, A: Allocator> Queue<'a, T, A> {
     /// Peeks the top element in the queue without popping it
     pub fn top(&self) -> Option<&T> {
         self.deque.front()
+    }
+}
+
+impl<'a, T: 'a + Debug, A: Allocator> Debug for Queue<'a, T, A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.deque.fmt(f)
     }
 }
 
