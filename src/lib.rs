@@ -19,5 +19,6 @@ pub mod map;
 pub mod queue;
 pub mod set;
 pub mod string;
+mod util;
 pub mod vector;
 pub mod vector_map;

@@ -1,5 +1,6 @@
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::deque::iter::{CompatIterMut, Iter, IterMut};
+use crate::util::rotate;
 use itertools::Itertools;
 use std::fmt::{Debug, Formatter};
 
@@ -224,6 +225,35 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
         }
     }
 
+    /// Removes and returns the element at `index` from the deque.
+    /// Whichever end is closer to the removal point will be moved to make
+    /// room, and all the affected elements will be moved to new positions.
+    /// Returns `None` if `index` is out of bounds.
+    ///
+    /// Element at index 0 is the front of the queue.
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+        let len = self.len();
+        if index >= len {
+            return None;
+        }
+
+        if index < (len / 2) {
+            // we want to copy elements forward
+            let elem_it = unsafe { self.iter_mut_unchecked() }
+                .rev()
+                .skip(len - index - 1);
+            let next_it = unsafe { self.iter_mut_unchecked() }.rev().skip(len - index);
+            unsafe { rotate(elem_it, next_it) };
+            self.pop_front()
+        } else {
+            // we want to copy elements backward
+            let elem_it = unsafe { self.iter_mut_unchecked() }.skip(index);
+            let next_it = unsafe { self.iter_mut_unchecked() }.skip(index + 1);
+            unsafe { rotate(elem_it, next_it) };
+            self.pop_back()
+        }
+    }
+
     /// Allocates the subarray pointer array
     ///
     /// # Arguments
@@ -298,6 +328,14 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
         };
 
         self.ptr_array = ptr_array.as_mut_ptr();
+    }
+
+    /// Returns a mutable iterator over the deque.
+    ///
+    /// # Safety
+    /// Elides the borrow checker.
+    unsafe fn iter_mut_unchecked(&mut self) -> IterMut<'a, T> {
+        IterMut::from_compat(self.begin_it.clone(), self.end_it.clone())
     }
 
     /// Reallocates the pointer array with additional capacity
@@ -425,7 +463,6 @@ impl<'a, T: 'a, A: Allocator + Default> FromIterator<T> for Deque<'a, T, A> {
 
 #[cfg(test)]
 mod test {
-
     use crate::deque::DefaultDeque;
     use memoffset::offset_of;
 
@@ -594,5 +631,50 @@ mod test {
         assert_eq!(d.pop_front(), None);
 
         assert!(d.is_empty());
+    }
+
+    #[test]
+    fn remove_out_of_bounds() {
+        let mut d = (0..6).collect::<DefaultDeque<_>>();
+
+        assert!(d.remove(6).is_none());
+
+        itertools::assert_equal(d, vec![0, 1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn remove_front() {
+        let mut d = (0..6).collect::<DefaultDeque<_>>();
+
+        assert_eq!(d.remove(0), Some(0));
+
+        itertools::assert_equal(d, vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn remove_back() {
+        let mut d = (0..6).collect::<DefaultDeque<_>>();
+
+        assert_eq!(d.remove(5), Some(5));
+
+        itertools::assert_equal(d, vec![0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn remove_middle_front_half() {
+        let mut d = (0..6).collect::<DefaultDeque<_>>();
+
+        assert_eq!(d.remove(1), Some(1));
+
+        itertools::assert_equal(d, vec![0, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn remove_middle_back_half() {
+        let mut d = (0..6).collect::<DefaultDeque<_>>();
+
+        d.remove(4);
+
+        itertools::assert_equal(d, vec![0, 1, 2, 3, 5]);
     }
 }
