@@ -17,17 +17,14 @@ use std::mem::MaybeUninit;
 use std::{mem, slice};
 
 /// A fixed map with overflow which uses the default allocator as an overflow.
-#[allow(private_interfaces)]
 pub type DefaultFixedMapWithOverflow<K, V, const NODE_COUNT: usize, C> =
     FixedMapWithOverflow<K, V, NODE_COUNT, DefaultAllocator, C>;
 
 /// A fixed map without overflow.
-#[allow(private_interfaces)]
 pub type FixedMap<K, V, const NODE_COUNT: usize, C = Less<K>> =
     FixedMapImpl<K, V, NODE_COUNT, FixedPool<Node<K, V>>, C>;
 
 /// A fixed map with overflow using the given overflow allocator.
-#[allow(private_interfaces)]
 pub type FixedMapWithOverflow<K, V, const NODE_COUNT: usize, OverflowAllocator, C = Less<K>> =
     FixedMapImpl<K, V, NODE_COUNT, FixedPoolWithOverflow<Node<K, V>, OverflowAllocator>, C>;
 
