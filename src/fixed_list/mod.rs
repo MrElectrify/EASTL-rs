@@ -52,6 +52,7 @@ impl<T, const NODE_COUNT: usize, OverflowAllocator: Allocator>
             },
             // we actually don't care what the buffer contains
             buffer: MaybeUninit::uninit().assume_init(),
+            _pad: MaybeUninit::uninit().assume_init(),
         })
         .with(|this| {
             let this = this.get_unchecked_mut();
