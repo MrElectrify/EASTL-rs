@@ -16,11 +16,16 @@ pub type DefaultHashSet<K, H = DefaultHash<K>, E = EqualTo<K>> = HashSet<K, Defa
 
 /// A hash set that can store and fetch keys in O(1) time
 #[repr(C)]
-pub struct HashSet<K: Eq, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equals<K> = EqualTo<K>> {
+pub struct HashSet<
+    K: PartialEq,
+    A: Allocator,
+    H: Hash<K> = DefaultHash<K>,
+    E: Equals<K> = EqualTo<K>,
+> {
     hash_table: HashTable<K, (), A, H, E>,
 }
 
-impl<K: Eq, A: Allocator + Default> HashSet<K, A, DefaultHash<K>, EqualTo<K>>
+impl<K: PartialEq, A: Allocator + Default> HashSet<K, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -32,7 +37,7 @@ where
     }
 }
 
-impl<K: Eq, A: Allocator, H: Hash<K>, E: Equals<K>> HashSet<K, A, H, E> {
+impl<K: PartialEq, A: Allocator, H: Hash<K>, E: Equals<K>> HashSet<K, A, H, E> {
     /// Clears the hash set, removing all keys
     pub fn clear(&mut self) {
         self.hash_table.clear()
@@ -103,7 +108,7 @@ impl<K: Eq, A: Allocator, H: Hash<K>, E: Equals<K>> HashSet<K, A, H, E> {
     }
 }
 
-impl<K: Debug + Eq, A: Allocator, H: Hash<K>, E: Equals<K>> Debug for HashSet<K, A, H, E> {
+impl<K: Debug + PartialEq, A: Allocator, H: Hash<K>, E: Equals<K>> Debug for HashSet<K, A, H, E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -116,7 +121,7 @@ impl<K: Debug + Eq, A: Allocator, H: Hash<K>, E: Equals<K>> Debug for HashSet<K,
     }
 }
 
-impl<K: Eq, A: Allocator + Default> Default for HashSet<K, A, DefaultHash<K>, EqualTo<K>>
+impl<K: PartialEq, A: Allocator + Default> Default for HashSet<K, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -125,7 +130,8 @@ where
     }
 }
 
-impl<K: Eq, A: Allocator + Default> FromIterator<K> for HashSet<K, A, DefaultHash<K>, EqualTo<K>>
+impl<K: PartialEq, A: Allocator + Default> FromIterator<K>
+    for HashSet<K, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -136,11 +142,11 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
+unsafe impl<K: PartialEq + Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
     for HashSet<K, A, H, E>
 {
 }
-unsafe impl<K: Eq + Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
+unsafe impl<K: PartialEq + Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
     for HashSet<K, A, H, E>
 {
 }

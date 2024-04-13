@@ -3,7 +3,7 @@ use std::{fmt::Debug, marker::PhantomData, ptr};
 
 /// The color of a red-black tree node
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Color {
     Red = 0,
     Black = 1,

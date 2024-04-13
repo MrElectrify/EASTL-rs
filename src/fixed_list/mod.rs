@@ -6,7 +6,7 @@
 pub mod conformant;
 
 use crate::allocator::{Allocator, DefaultAllocator};
-use crate::fixed_pool::with_overflow::FixedPoolWithOverflow;
+use crate::fixed_pool::{with_overflow::FixedPoolWithOverflow, PoolAllocator};
 use crate::list::node::{ListNode, ListNodeBase};
 use crate::list::List;
 use moveit::{new, New};
@@ -27,6 +27,8 @@ pub struct FixedList<T, const NODE_COUNT: usize, OverflowAllocator: Allocator> {
     // this should `technically` be conformant - `buffer` should be aligned to the alignment of
     // `ListNode<T>`...
     buffer: [MaybeUninit<ListNode<T>>; NODE_COUNT],
+    // ... and then we add an extra node for the padding induced as shown in the conformant version
+    _pad: MaybeUninit<ListNode<T>>,
 }
 
 #[allow(private_bounds)]

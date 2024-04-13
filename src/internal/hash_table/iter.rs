@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 /// rust, so these are strictly for compatibility's
 /// sake. They cannot actually be used to iterate.
 #[repr(C)]
-pub struct CompatIter<'a, K: Eq + 'a, V: 'a> {
+pub struct CompatIter<'a, K: PartialEq + 'a, V: 'a> {
     node_ptr: *mut Node<K, V>,
     bucket_ptr: *const *const Node<K, V>,
     _marker: PhantomData<&'a (K, V)>,
@@ -17,7 +17,7 @@ pub struct CompatIter<'a, K: Eq + 'a, V: 'a> {
 /// rust, so these are strictly for compatibility's
 /// sake. They cannot actually be used to iterate.
 #[repr(C)]
-pub struct CompatIterMut<'a, K: Eq + 'a, V: 'a> {
+pub struct CompatIterMut<'a, K: PartialEq + 'a, V: 'a> {
     node_ptr: *mut Node<K, V>,
     bucket_ptr: *const *mut Node<K, V>,
     _marker: PhantomData<&'a (K, V)>,
@@ -36,12 +36,12 @@ pub struct CompatIterMut<'a, K: Eq + 'a, V: 'a> {
 /// inserted after an iterator was created will
 /// be yielded by the iterator
 #[derive(Clone)]
-struct RawIter<'a, K: Eq + 'a, V: 'a> {
+struct RawIter<'a, K: PartialEq + 'a, V: 'a> {
     bucket_iter: std::slice::Iter<'a, *mut Node<K, V>>,
     node_ptr: *mut Node<K, V>,
 }
 
-impl<'a, K: Eq, V> RawIter<'a, K, V> {
+impl<'a, K: PartialEq, V> RawIter<'a, K, V> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
     fn into_compat(self) -> (CompatIter<'a, K, V>, CompatIter<'a, K, V>) {
@@ -162,7 +162,7 @@ impl<'a, K: Eq, V> RawIter<'a, K, V> {
     }
 }
 
-impl<'a, K: Eq, V> Iterator for RawIter<'a, K, V> {
+impl<'a, K: PartialEq, V> Iterator for RawIter<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -196,11 +196,11 @@ impl<'a, K: Eq, V> Iterator for RawIter<'a, K, V> {
 /// inserted after an iterator was created will
 /// be yielded by the iterator
 #[derive(Clone)]
-pub struct Iter<'a, K: Eq + 'a, V: 'a> {
+pub struct Iter<'a, K: PartialEq + 'a, V: 'a> {
     inner: RawIter<'a, K, V>,
 }
 
-impl<'a, K: Eq + 'a, V: 'a> Iter<'a, K, V> {
+impl<'a, K: PartialEq + 'a, V: 'a> Iter<'a, K, V> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
     pub fn into_compat(self) -> (CompatIter<'a, K, V>, CompatIter<'a, K, V>) {
@@ -259,7 +259,7 @@ impl<'a, K: Eq + 'a, V: 'a> Iter<'a, K, V> {
     }
 }
 
-impl<'a, K: Eq + 'a, V: 'a> Iterator for Iter<'a, K, V> {
+impl<'a, K: PartialEq + 'a, V: 'a> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -281,11 +281,11 @@ impl<'a, K: Eq + 'a, V: 'a> Iterator for Iter<'a, K, V> {
 /// inserted after an iterator was created will
 /// be yielded by the iterator
 #[derive(Clone)]
-pub struct IterMut<'a, K: Eq + 'a, V: 'a> {
+pub struct IterMut<'a, K: PartialEq + 'a, V: 'a> {
     inner: RawIter<'a, K, V>,
 }
 
-impl<'a, K: Eq + 'a, V: 'a> IterMut<'a, K, V> {
+impl<'a, K: PartialEq + 'a, V: 'a> IterMut<'a, K, V> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
     pub fn into_compat(self) -> (CompatIter<'a, K, V>, CompatIter<'a, K, V>) {
@@ -331,7 +331,7 @@ impl<'a, K: Eq + 'a, V: 'a> IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K: Eq + 'a, V: 'a> Iterator for IterMut<'a, K, V> {
+impl<'a, K: PartialEq + 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -12,7 +12,7 @@ pub mod iter;
 pub(crate) mod node;
 
 #[repr(C)]
-pub struct RBTree<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
+pub struct RBTree<K: PartialEq, V, A: Allocator, C: Compare<K> = Less<K>> {
     /// A 1-size functor in C++
     compare: C,
     /// Real EASTL uses a node without a K/V pair
@@ -26,7 +26,7 @@ pub struct RBTree<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
     pub(crate) allocator: A,
 }
 
-impl<K: Eq, V, A: Allocator + Default, C: Compare<K> + Default> RBTree<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator + Default, C: Compare<K> + Default> RBTree<K, V, A, C> {
     /// Returns a default new red-black tree
     fn new() -> Self {
         Self {
@@ -40,19 +40,21 @@ impl<K: Eq, V, A: Allocator + Default, C: Compare<K> + Default> RBTree<K, V, A, 
     }
 }
 
-impl<K: Eq, V, A: Allocator + Default, C: Compare<K> + Default> Default for RBTree<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator + Default, C: Compare<K> + Default> Default
+    for RBTree<K, V, A, C>
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K>> Drop for RBTree<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator, C: Compare<K>> Drop for RBTree<K, V, A, C> {
     fn drop(&mut self) {
         self.free_nodes()
     }
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> RBTree<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator, C: Compare<K> + Default> RBTree<K, V, A, C> {
     /// Constructs a red-black tree using a specified allocator
     ///
     /// # Arguments
@@ -70,7 +72,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> RBTree<K, V, A, C> {
     }
 }
 
-impl<K: Eq, V, A: Allocator + Default, C: Compare<K>> RBTree<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator + Default, C: Compare<K>> RBTree<K, V, A, C> {
     /// Constructs a red-black tree using a specified comparator
     ///
     /// # Arguments
@@ -88,7 +90,7 @@ impl<K: Eq, V, A: Allocator + Default, C: Compare<K>> RBTree<K, V, A, C> {
     }
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator, C: Compare<K>> RBTree<K, V, A, C> {
     /// Constructs a red-black tree using a specified allocator
     /// and comparator
     ///

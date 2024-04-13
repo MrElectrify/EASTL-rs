@@ -5,6 +5,7 @@
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::compare::{Compare, Less};
 use crate::fixed_pool::with_overflow::FixedPoolWithOverflow;
+use crate::fixed_pool::{FixedPool, PoolAllocator};
 use crate::internal::rb_tree::{
     iter::{Iter, IterMut},
     node::Node,
@@ -15,29 +16,47 @@ use moveit::{new, New};
 use std::mem::MaybeUninit;
 use std::{mem, slice};
 
-/// A fixed map which uses the default allocator as an overflow.
-pub type DefaultFixedList<K, V, const NODE_COUNT: usize, C> =
-    FixedMap<K, V, NODE_COUNT, DefaultAllocator, C>;
+/// A fixed map with overflow which uses the default allocator as an overflow.
+#[allow(private_interfaces)]
+pub type DefaultFixedMapWithOverflow<K, V, const NODE_COUNT: usize, C> =
+    FixedMapWithOverflow<K, V, NODE_COUNT, DefaultAllocator, C>;
+
+/// A fixed map without overflow.
+#[allow(private_interfaces)]
+pub type FixedMap<K, V, const NODE_COUNT: usize, C = Less<K>> =
+    FixedMapImpl<K, V, NODE_COUNT, FixedPool<Node<K, V>>, C>;
+
+/// A fixed map with overflow using the given overflow allocator.
+#[allow(private_interfaces)]
+pub type FixedMapWithOverflow<K, V, const NODE_COUNT: usize, OverflowAllocator, C = Less<K>> =
+    FixedMapImpl<K, V, NODE_COUNT, FixedPoolWithOverflow<Node<K, V>, OverflowAllocator>, C>;
 
 #[repr(C)]
-pub struct FixedMap<
-    K: Eq,
+pub struct FixedMapImpl<
+    K: PartialEq,
     V,
     const NODE_COUNT: usize,
-    OverflowAllocator: Allocator,
+    A: Allocator,
     C: Compare<K> = Less<K>,
 > {
     // real EASTL uses a fixed_node_pool here, which is just fixed_pool_with_overflow templated
     // by node size instead of type, so it does not matter and we use fixed_pool_with_overflow
     // directly
-    base_map: Map<K, V, FixedPoolWithOverflow<Node<K, V>, OverflowAllocator>, C>,
+    base_map: Map<K, V, A, C>,
     // this should `technically` be conformant - `buffer` should be aligned to the alignment of
     // `ListNode<T>`...
     buffer: [MaybeUninit<Node<K, V>>; NODE_COUNT],
+    // ... and then we add an extra node for the padding induced as shown in the conformant version (of FixedList)
+    _pad: MaybeUninit<Node<K, V>>,
 }
 
-impl<K: Eq, V, const NODE_COUNT: usize, OverflowAllocator: Allocator, C: Compare<K> + Default>
-    FixedMap<K, V, NODE_COUNT, OverflowAllocator, C>
+impl<
+        K: PartialEq,
+        V,
+        const NODE_COUNT: usize,
+        A: PoolAllocator + Default,
+        C: Compare<K> + Default,
+    > FixedMapImpl<K, V, NODE_COUNT, A, C>
 {
     /// Create a new, empty fixed map.
     ///
@@ -46,11 +65,12 @@ impl<K: Eq, V, const NODE_COUNT: usize, OverflowAllocator: Allocator, C: Compare
     ///
     /// # Safety
     /// The resulting map must not be moved.
-    pub unsafe fn new_in(allocator: OverflowAllocator) -> impl New<Output = Self> {
+    pub unsafe fn new() -> impl New<Output = Self> {
         new::of(Self {
-            base_map: Map::with_allocator(FixedPoolWithOverflow::with_allocator(allocator)),
+            base_map: Map::with_allocator(A::default()),
             // we actually don't care what the buffer contains
             buffer: MaybeUninit::uninit().assume_init(),
+            _pad: MaybeUninit::uninit().assume_init(),
         })
         .with(|this| {
             let this = this.get_unchecked_mut();
@@ -65,8 +85,8 @@ impl<K: Eq, V, const NODE_COUNT: usize, OverflowAllocator: Allocator, C: Compare
     }
 }
 
-impl<K: Eq, V, const NODE_COUNT: usize, OverflowAllocator: Allocator, C: Compare<K>>
-    FixedMap<K, V, NODE_COUNT, OverflowAllocator, C>
+impl<K: PartialEq, V, const NODE_COUNT: usize, A: Allocator, C: Compare<K>>
+    FixedMapImpl<K, V, NODE_COUNT, A, C>
 {
     /// Clears the map, removing all key-value pairs
     pub fn clear(&mut self) {

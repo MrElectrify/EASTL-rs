@@ -19,11 +19,17 @@ pub type DefaultHashMap<K, V, H = DefaultHash<K>, E = EqualTo<K>> =
 
 /// A hash map that can store and fetch values from a key in O(1) time
 #[repr(C)]
-pub struct HashMap<K: Eq, V, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equals<K> = EqualTo<K>> {
+pub struct HashMap<
+    K: PartialEq,
+    V,
+    A: Allocator,
+    H: Hash<K> = DefaultHash<K>,
+    E: Equals<K> = EqualTo<K>,
+> {
     hash_table: HashTable<K, V, A, H, E>,
 }
 
-impl<K: Eq, V, A: Allocator + Default> HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
+impl<K: PartialEq, V, A: Allocator + Default> HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -35,7 +41,7 @@ where
     }
 }
 
-impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashMap<K, V, A, H, E> {
+impl<K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashMap<K, V, A, H, E> {
     /// Clears the hash map, removing all key-value pairs
     pub fn clear(&mut self) {
         self.hash_table.clear()
@@ -137,7 +143,7 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashMap<K, V, A, H, E> {
     }
 }
 
-impl<K: Debug + Eq, V: Debug, A: Allocator, H: Hash<K>, E: Equals<K>> Debug
+impl<K: Debug + PartialEq, V: Debug, A: Allocator, H: Hash<K>, E: Equals<K>> Debug
     for HashMap<K, V, A, H, E>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -152,7 +158,8 @@ impl<K: Debug + Eq, V: Debug, A: Allocator, H: Hash<K>, E: Equals<K>> Debug
     }
 }
 
-impl<K: Eq, V, A: Allocator + Default> Default for HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
+impl<K: PartialEq, V, A: Allocator + Default> Default
+    for HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -161,7 +168,7 @@ where
     }
 }
 
-impl<K: Eq, V, A: Allocator + Default> FromIterator<(K, V)>
+impl<K: PartialEq, V, A: Allocator + Default> FromIterator<(K, V)>
     for HashMap<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
@@ -173,11 +180,11 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
+unsafe impl<K: PartialEq + Send, V: Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
     for HashMap<K, V, A, H, E>
 {
 }
-unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
+unsafe impl<K: PartialEq + Sync, V: Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
     for HashMap<K, V, A, H, E>
 {
 }

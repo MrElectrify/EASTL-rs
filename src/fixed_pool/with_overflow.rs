@@ -1,5 +1,5 @@
 use crate::allocator::Allocator;
-use crate::fixed_pool::FixedPool;
+use crate::fixed_pool::{FixedPool, PoolAllocator};
 use std::{mem, ptr};
 
 /// The class `eastl::fixed_pool_with_overflow`. Attempts to allocate from the pool,
@@ -41,12 +41,12 @@ impl<Node: Sized, OverflowAllocator: Allocator> FixedPoolWithOverflow<Node, Over
     pub fn can_allocate(&self) -> bool {
         self.pool_allocator.can_allocate()
     }
+}
 
-    /// Initializes the fixed pool allocator with the given memory.
-    ///
-    /// # Safety
-    /// `memory` must be a valid chunk of memory, solely owned and managed by the pool allocator.
-    pub unsafe fn init(&mut self, memory: &mut [u8]) {
+impl<Node: Sized, OverflowAllocator: Allocator> PoolAllocator
+    for FixedPoolWithOverflow<Node, OverflowAllocator>
+{
+    unsafe fn init(&mut self, memory: &mut [u8]) {
         self.pool_allocator.init(memory);
 
         // store the pool base

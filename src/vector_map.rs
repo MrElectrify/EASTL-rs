@@ -11,12 +11,12 @@ pub type DefaultVectorMap<K, V, C = Less<K>> = VectorMap<K, V, DefaultAllocator,
 
 /// A vector map is a map backed by a vector, maintaining an order
 #[repr(C)]
-pub struct VectorMap<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
+pub struct VectorMap<K: PartialEq, V, A: Allocator, C: Compare<K> = Less<K>> {
     base: Vector<(K, V), A>,
     _compare: C,
 }
 
-impl<K: Eq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> {
+impl<K: PartialEq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> {
     /// Creates a new empty vector map
     pub fn new() -> Self {
         Self {
@@ -38,7 +38,7 @@ impl<K: Eq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> 
     }
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> VectorMap<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator, C: Compare<K> + Default> VectorMap<K, V, A, C> {
     /// Returns the capacity of the vector map
     pub fn capacity(&self) -> usize {
         self.base.capacity()
@@ -185,13 +185,13 @@ impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> VectorMap<K, V, A, C> {
     }
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K>> AsRef<[(K, V)]> for VectorMap<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator, C: Compare<K>> AsRef<[(K, V)]> for VectorMap<K, V, A, C> {
     fn as_ref(&self) -> &[(K, V)] {
         self.base.as_ref()
     }
 }
 
-impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for VectorMap<K, V, A, C> {
+impl<K: PartialEq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for VectorMap<K, V, A, C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -205,13 +205,13 @@ impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for VectorMap<K
     }
 }
 
-impl<K: Eq + PartialOrd, V, A: Allocator + Default> Default for VectorMap<K, V, A, Less<K>> {
+impl<K: PartialEq + PartialOrd, V, A: Allocator + Default> Default for VectorMap<K, V, A, Less<K>> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Deref for VectorMap<K, V, A, C> {
+impl<K: PartialEq + Debug, V: Debug, A: Allocator, C: Compare<K>> Deref for VectorMap<K, V, A, C> {
     type Target = [(K, V)];
 
     fn deref(&self) -> &Self::Target {
@@ -219,7 +219,7 @@ impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Deref for VectorMap<K
     }
 }
 
-impl<K: Clone + Eq + PartialOrd, V: Clone, A: Allocator + Default> From<&[(K, V)]>
+impl<K: Clone + PartialEq + PartialOrd, V: Clone, A: Allocator + Default> From<&[(K, V)]>
     for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: &[(K, V)]) -> Self {
@@ -231,7 +231,7 @@ impl<K: Clone + Eq + PartialOrd, V: Clone, A: Allocator + Default> From<&[(K, V)
     }
 }
 
-impl<K: Clone + Eq + PartialOrd, V: Clone, A: Allocator + Default> From<&mut [(K, V)]>
+impl<K: Clone + PartialEq + PartialOrd, V: Clone, A: Allocator + Default> From<&mut [(K, V)]>
     for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: &mut [(K, V)]) -> Self {
@@ -239,7 +239,7 @@ impl<K: Clone + Eq + PartialOrd, V: Clone, A: Allocator + Default> From<&mut [(K
     }
 }
 
-impl<K: Eq + PartialOrd, V, const N: usize, A: Allocator + Default> From<[(K, V); N]>
+impl<K: PartialEq + PartialOrd, V, const N: usize, A: Allocator + Default> From<[(K, V); N]>
     for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: [(K, V); N]) -> Self {
@@ -251,7 +251,7 @@ impl<K: Eq + PartialOrd, V, const N: usize, A: Allocator + Default> From<[(K, V)
     }
 }
 
-impl<K: Clone + Eq + PartialOrd, V: Clone, const N: usize, A: Allocator + Default>
+impl<K: Clone + PartialEq + PartialOrd, V: Clone, const N: usize, A: Allocator + Default>
     From<&[(K, V); N]> for VectorMap<K, V, A, Less<K>>
 {
     fn from(value: &[(K, V); N]) -> Self {
@@ -259,7 +259,7 @@ impl<K: Clone + Eq + PartialOrd, V: Clone, const N: usize, A: Allocator + Defaul
     }
 }
 
-impl<K: Eq + PartialOrd, V, A: Allocator + Default> FromIterator<(K, V)>
+impl<K: PartialEq + PartialOrd, V, A: Allocator + Default> FromIterator<(K, V)>
     for VectorMap<K, V, A, Less<K>>
 {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
@@ -272,11 +272,11 @@ impl<K: Eq + PartialOrd, V, A: Allocator + Default> FromIterator<(K, V)>
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, C: Compare<K> + Send> Send
+unsafe impl<K: PartialEq + Send, V: Send, A: Allocator + Send, C: Compare<K> + Send> Send
     for VectorMap<K, V, A, C>
 {
 }
-unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, C: Compare<K> + Sync> Sync
+unsafe impl<K: PartialEq + Sync, V: Sync, A: Allocator + Sync, C: Compare<K> + Sync> Sync
     for VectorMap<K, V, A, C>
 {
 }

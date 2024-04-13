@@ -1,12 +1,12 @@
 /// A node in a hashtable
 #[repr(C)]
-pub struct Node<K: Eq, V> {
+pub struct Node<K: PartialEq, V> {
     pub key: K,
     pub val: V,
     pub next: *mut Self,
 }
 
-impl<K: Eq, V> Node<K, V> {
+impl<K: PartialEq, V> Node<K, V> {
     /// Creates the node from a key/value
     ///
     /// # Arguments

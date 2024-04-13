@@ -5,21 +5,21 @@ use crate::internal::hash_table::node::Node;
 use crate::internal::hash_table::HashTable;
 
 /// A vacant node - one that has not been inserted yet.
-pub struct VacantEntry<'a, K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> {
+pub struct VacantEntry<'a, K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> {
     pub(crate) table: &'a mut HashTable<K, V, A, H, E>,
     pub(crate) target_bucket: &'a mut *mut Node<K, V>,
     pub(crate) key: K,
 }
 
 /// An entry in a hash table.
-pub enum Entry<'a, K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> {
+pub enum Entry<'a, K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> {
     /// There was a node found already for the key.
     Occupied(&'a mut Node<K, V>),
     /// There was not a node already present for the key.
     Vacant(VacantEntry<'a, K, V, A, H, E>),
 }
 
-impl<'a, K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Entry<'a, K, V, A, H, E> {
+impl<'a, K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Entry<'a, K, V, A, H, E> {
     /// Provides in-place mutable access to the value.
     ///
     /// # Arguments
