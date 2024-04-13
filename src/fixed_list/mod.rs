@@ -207,7 +207,7 @@ mod test {
             mem::size_of::<ListNodeBase>()
                 + mem::size_of::<usize>()
                 + mem::size_of::<FixedPoolWithOverflow<ListNode<Test>, DefaultAllocator>>()
-                + mem::size_of::<ListNode<Test>>()
+                + mem::size_of::<ListNode<Test>>() * 2
         );
     }
 
