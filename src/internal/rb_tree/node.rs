@@ -3,8 +3,8 @@ use std::{fmt::Debug, marker::PhantomData, ptr};
 
 /// The color of a red-black tree node
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Color {
+#[derive(Debug, Eq, PartialEq)]
+pub enum Color {
     Red = 0,
     Black = 1,
 }
@@ -22,7 +22,7 @@ impl From<u32> for Color {
 /// A parent-color compressed pair. Combined, the
 /// pair takes `std::mem::size_of::<usize>()` bytes
 #[repr(C)]
-pub(crate) struct ParentColor<K, V> {
+pub struct ParentColor<K, V> {
     raw_ptr: usize,
     _ignore_key: PhantomData<K>,
     _ignore_value: PhantomData<V>,
@@ -84,7 +84,7 @@ impl<K, V> Default for ParentColor<K, V> {
 
 #[repr(C)]
 #[derive(Debug)]
-pub(crate) struct Node<K, V> {
+pub struct Node<K, V> {
     pub right: *mut Node<K, V>,
     pub left: *mut Node<K, V>,
     pub parent: ParentColor<K, V>,

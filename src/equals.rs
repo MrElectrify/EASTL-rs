@@ -17,7 +17,7 @@ pub struct EqualTo<T> {
     _marker: PhantomData<T>,
 }
 
-impl<T: Eq> Equals<T> for EqualTo<T> {
+impl<T: PartialEq> Equals<T> for EqualTo<T> {
     fn equals(lhs: &T, rhs: &T) -> bool {
         lhs == rhs
     }

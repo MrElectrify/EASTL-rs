@@ -12,11 +12,12 @@ use std::fmt::{Debug, Formatter};
 /// need ordering, look at `HashMap`, which takes O(1) time
 /// for those operations
 #[derive(Default)]
-pub struct Map<K: Eq, V, A: Allocator, C: Compare<K> = Less<K>> {
-    inner: RBTree<K, V, A, C>,
+#[repr(C)]
+pub struct Map<K: PartialEq, V, A: Allocator, C: Compare<K> = Less<K>> {
+    pub(crate) inner: RBTree<K, V, A, C>,
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> Map<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator, C: Compare<K> + Default> Map<K, V, A, C> {
     /// Constructs a map using a specified allocator
     ///
     /// # Arguments
@@ -29,7 +30,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K> + Default> Map<K, V, A, C> {
     }
 }
 
-impl<K: Eq, V, A: Allocator + Default, C: Compare<K>> Map<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator + Default, C: Compare<K>> Map<K, V, A, C> {
     /// Constructs a map using a specified comparator
     ///
     /// # Arguments
@@ -42,7 +43,7 @@ impl<K: Eq, V, A: Allocator + Default, C: Compare<K>> Map<K, V, A, C> {
     }
 }
 
-impl<K: Eq, V, A: Allocator, C: Compare<K>> Map<K, V, A, C> {
+impl<K: PartialEq, V, A: Allocator, C: Compare<K>> Map<K, V, A, C> {
     /// Constructs a map using a specified allocator
     /// and comparator
     ///
@@ -147,7 +148,7 @@ impl<K: Eq, V, A: Allocator, C: Compare<K>> Map<K, V, A, C> {
     }
 }
 
-impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for Map<K, V, A, C> {
+impl<K: PartialEq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for Map<K, V, A, C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -160,12 +161,12 @@ impl<K: Eq + Debug, V: Debug, A: Allocator, C: Compare<K>> Debug for Map<K, V, A
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, C: Compare<K> + Send> Send
+unsafe impl<K: PartialEq + Send, V: Send, A: Allocator + Send, C: Compare<K> + Send> Send
     for Map<K, V, A, C>
 {
 }
 
-unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, C: Compare<K> + Sync> Sync
+unsafe impl<K: PartialEq + Sync, V: Sync, A: Allocator + Sync, C: Compare<K> + Sync> Sync
     for Map<K, V, A, C>
 {
 }

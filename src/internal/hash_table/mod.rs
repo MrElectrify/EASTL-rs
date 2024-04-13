@@ -27,8 +27,13 @@ pub type DefaultHashTable<K, V, H = DefaultHash<K>, E = EqualTo<K>> =
 
 /// A base hashtable used to support hash maps and sets
 #[repr(C)]
-pub struct HashTable<K: Eq, V, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equals<K> = EqualTo<K>>
-{
+pub struct HashTable<
+    K: PartialEq,
+    V,
+    A: Allocator,
+    H: Hash<K> = DefaultHash<K>,
+    E: Equals<K> = EqualTo<K>,
+> {
     /// The C++ object has some key extractor functor here
     /// that we don't need
     _pad: u8,
@@ -43,7 +48,7 @@ pub struct HashTable<K: Eq, V, A: Allocator, H: Hash<K> = DefaultHash<K>, E: Equ
 /// Two entries - a null entry and the sentinel.
 static EMPTY_BUCKET_ARR: [usize; 2] = [0, !0];
 
-impl<K: Eq, V, A: Allocator + Default> HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
+impl<K: PartialEq, V, A: Allocator + Default> HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -53,7 +58,7 @@ where
     }
 }
 
-impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> {
+impl<K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> {
     /// Clears the hash table, removing all key-value pairs
     pub fn clear(&mut self) {
         self.free_buckets();
@@ -403,7 +408,8 @@ impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A, H, E> 
     }
 }
 
-impl<K: Eq, V, A: Allocator + Default> Default for HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
+impl<K: PartialEq, V, A: Allocator + Default> Default
+    for HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
 {
@@ -412,13 +418,13 @@ where
     }
 }
 
-impl<K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Drop for HashTable<K, V, A, H, E> {
+impl<K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Drop for HashTable<K, V, A, H, E> {
     fn drop(&mut self) {
         self.free_buckets();
     }
 }
 
-impl<K: Eq, V, A: Allocator + Default> FromIterator<(K, V)>
+impl<K: PartialEq, V, A: Allocator + Default> FromIterator<(K, V)>
     for HashTable<K, V, A, DefaultHash<K>, EqualTo<K>>
 where
     DefaultHash<K>: Hash<K>,
@@ -432,11 +438,11 @@ where
     }
 }
 
-unsafe impl<K: Eq + Send, V: Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
+unsafe impl<K: PartialEq + Send, V: Send, A: Allocator + Send, H: Hash<K>, E: Equals<K>> Send
     for HashTable<K, V, A, H, E>
 {
 }
-unsafe impl<K: Eq + Sync, V: Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
+unsafe impl<K: PartialEq + Sync, V: Sync, A: Allocator + Sync, H: Hash<K>, E: Equals<K>> Sync
     for HashTable<K, V, A, H, E>
 {
 }
@@ -581,7 +587,7 @@ mod test {
         assert_eq!(bag, 2);
     }
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, Eq, PartialEq)]
     struct A {
         a: u32,
     }

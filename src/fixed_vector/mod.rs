@@ -13,8 +13,6 @@ use std::{mem, ptr};
 
 mod allocator;
 
-/// TODO overflow_enabled, more than traversal?
-
 /// Fixed vector with the default allocator.
 pub type DefaultFixedVector<T, const NODE_COUNT: usize> =
     FixedVector<T, NODE_COUNT, DefaultAllocator>;

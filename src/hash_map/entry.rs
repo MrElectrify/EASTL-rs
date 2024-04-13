@@ -4,11 +4,11 @@ use crate::hash::Hash;
 use crate::internal::hash_table;
 
 /// An entry in a hash map.
-pub struct Entry<'a, K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>>(
+pub struct Entry<'a, K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>>(
     hash_table::entry::Entry<'a, K, V, A, H, E>,
 );
 
-impl<'a, K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Entry<'a, K, V, A, H, E> {
+impl<'a, K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Entry<'a, K, V, A, H, E> {
     /// Provides in-place mutable access to the value.
     ///
     /// # Arguments
@@ -37,7 +37,7 @@ impl<'a, K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>> Entry<'a, K, V, A, H,
     }
 }
 
-impl<'a, K: Eq, V, A: Allocator, H: Hash<K>, E: Equals<K>>
+impl<'a, K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>>
     From<hash_table::entry::Entry<'a, K, V, A, H, E>> for Entry<'a, K, V, A, H, E>
 {
     fn from(value: hash_table::entry::Entry<'a, K, V, A, H, E>) -> Self {

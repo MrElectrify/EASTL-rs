@@ -9,11 +9,11 @@ use crate::internal::hash_table::iter::CompatIter;
 /// It is unspecified whether or not an element
 /// inserted after an iterator was created will
 /// be yielded by the iterator
-pub struct Iter<'a, K: Eq + 'a> {
+pub struct Iter<'a, K: PartialEq + 'a> {
     inner: crate::internal::hash_table::iter::Iter<'a, K, ()>,
 }
 
-impl<'a, K: Eq + 'a> Iter<'a, K> {
+impl<'a, K: PartialEq + 'a> Iter<'a, K> {
     /// Converts the Rust iterator into a pair of
     /// `(begin, end)` compatibility iterators
     pub fn into_compat(self) -> (CompatIter<'a, K, ()>, CompatIter<'a, K, ()>) {
@@ -51,7 +51,7 @@ impl<'a, K: Eq + 'a> Iter<'a, K> {
     }
 }
 
-impl<'a, K: Eq + 'a> Iterator for Iter<'a, K> {
+impl<'a, K: PartialEq + 'a> Iterator for Iter<'a, K> {
     type Item = &'a K;
 
     fn next(&mut self) -> Option<Self::Item> {

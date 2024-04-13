@@ -4,6 +4,14 @@ use crate::allocator::Allocator;
 use std::marker::PhantomData;
 use std::{mem, ptr};
 
+pub trait PoolAllocator: Allocator {
+    /// Initializes the fixed pool allocator with the given memory.
+    ///
+    /// # Safety
+    /// `memory` must be a valid chunk of memory, solely owned and managed by the pool allocator.
+    unsafe fn init(&mut self, memory: &mut [u8]);
+}
+
 /// The struct `eastl::fixed_pool_base::Link`. Singly-linked list for memory allocations.
 pub(crate) struct Link {
     next: *mut Link,
@@ -30,11 +38,15 @@ impl<Node: Sized> FixedPool<Node> {
         res
     }
 
-    /// Initializes the fixed pool allocator with the given memory.
-    ///
-    /// # Safety
-    /// `memory` must be a valid chunk of memory, solely owned and managed by the pool allocator.
-    pub unsafe fn init(&mut self, memory: &mut [u8]) {
+    /// Returns true if the pool can allocate.
+    #[allow(dead_code)]
+    pub fn can_allocate(&self) -> bool {
+        !self.head.is_null() || (self.next != self.capacity)
+    }
+}
+
+impl<Node: Sized> PoolAllocator for FixedPool<Node> {
+    unsafe fn init(&mut self, memory: &mut [u8]) {
         let mut memory_size = memory.len();
         let mut node_align = mem::align_of::<Node>();
         let node_size = mem::size_of::<Node>();
@@ -63,12 +75,6 @@ impl<Node: Sized> FixedPool<Node> {
         self.head = ptr::null_mut();
         self.next = next as *mut Link;
         self.capacity = (next + memory_size) as *mut Link;
-    }
-
-    /// Returns true if the pool can allocate.
-    #[allow(dead_code)]
-    pub fn can_allocate(&self) -> bool {
-        !self.head.is_null() || (self.next != self.capacity)
     }
 }
 

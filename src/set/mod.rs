@@ -9,11 +9,11 @@ use crate::{
 /// need ordering, look at `HashSet`, which takes O(1) time
 /// for those operations
 #[derive(Default)]
-pub struct Set<K: Eq, A: Allocator, C: Compare<K> = Less<K>> {
+pub struct Set<K: PartialEq, A: Allocator, C: Compare<K> = Less<K>> {
     inner: RBTree<K, (), A, C>,
 }
 
-impl<K: Eq, A: Allocator, C: Compare<K> + Default> Set<K, A, C> {
+impl<K: PartialEq, A: Allocator, C: Compare<K> + Default> Set<K, A, C> {
     /// Constructs a set using a specified allocator
     ///
     /// # Arguments
@@ -26,7 +26,7 @@ impl<K: Eq, A: Allocator, C: Compare<K> + Default> Set<K, A, C> {
     }
 }
 
-impl<K: Eq, A: Allocator + Default, C: Compare<K>> Set<K, A, C> {
+impl<K: PartialEq, A: Allocator + Default, C: Compare<K>> Set<K, A, C> {
     /// Constructs a set using a specified comparator
     ///
     /// # Arguments
@@ -39,7 +39,7 @@ impl<K: Eq, A: Allocator + Default, C: Compare<K>> Set<K, A, C> {
     }
 }
 
-impl<K: Eq, A: Allocator, C: Compare<K>> Set<K, A, C> {
+impl<K: PartialEq, A: Allocator, C: Compare<K>> Set<K, A, C> {
     /// Constructs a set using a specified allocator
     /// and comparator
     ///
