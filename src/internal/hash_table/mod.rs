@@ -561,7 +561,7 @@ mod test {
             self.a == other.a
         }
     }
-    impl<'a> PartialEq for Test<'a> {}
+    impl<'a> Eq for Test<'a> {}
 
     impl<'a> Hash<Test<'a>> for DefaultHash<Test<'a>> {
         fn hash(val: &Test<'a>) -> usize {
@@ -587,7 +587,7 @@ mod test {
         assert_eq!(bag, 2);
     }
 
-    #[derive(Debug, PartialEq, PartialEq)]
+    #[derive(Debug, Eq, PartialEq)]
     struct A {
         a: u32,
     }
