@@ -64,11 +64,19 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
 
     /// Returns the vector as raw bytes
     pub fn as_slice(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.begin_ptr, self.len()) }
+        if let Some(begin_ptr) = unsafe { self.begin_ptr.as_ref() } {
+            unsafe { std::slice::from_raw_parts(begin_ptr, self.len()) }
+        } else {
+            &mut []
+        }
     }
 
     pub fn as_slice_mut(&mut self) -> &mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(self.begin_ptr, self.len()) }
+        if let Some(begin_ptr) = unsafe { self.begin_ptr.as_mut() } {
+            unsafe { std::slice::from_raw_parts_mut(begin_ptr, self.len()) }
+        } else {
+            &mut []
+        }
     }
 
     /// Returns the capacity of the vector
@@ -340,7 +348,7 @@ impl<T, A: Allocator> Deref for Vector<T, A> {
 
 impl<T, A: Allocator> DerefMut for Vector<T, A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { std::slice::from_raw_parts_mut(self.begin_ptr, self.len()) }
+        self.as_slice_mut()
     }
 }
 

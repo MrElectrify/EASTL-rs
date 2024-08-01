@@ -263,12 +263,20 @@ impl<K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A,
 
     /// Returns the buckets for the hash table
     fn buckets_imut(&self) -> &[*mut Node<K, V>] {
-        unsafe { std::slice::from_raw_parts(self.bucket_array, self.bucket_count as usize) }
+        if let Some(bucket_array) = unsafe { self.bucket_array.as_ref() } {
+            unsafe { std::slice::from_raw_parts(bucket_array, self.bucket_count as usize) }
+        } else {
+            &[]
+        }
     }
 
     /// Returns the buckets for the hash table
     fn buckets_mut(&mut self) -> &mut [*mut Node<K, V>] {
-        unsafe { std::slice::from_raw_parts_mut(self.bucket_array, self.bucket_count as usize) }
+        if let Some(bucket_array) = unsafe { self.bucket_array.as_mut() } {
+            unsafe { std::slice::from_raw_parts_mut(bucket_array, self.bucket_count as usize) }
+        } else {
+            &mut []
+        }
     }
 
     /// Finds a key's node in a bucket

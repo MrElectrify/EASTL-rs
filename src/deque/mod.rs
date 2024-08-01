@@ -357,8 +357,11 @@ impl<'a, T: 'a, A: Allocator> Deque<'a, T, A> {
         let current_array_start =
             unsafe { self.begin_it.current_array.offset_from(self.ptr_array) } as usize;
         let current_array_end = current_array_start + used_ptrs;
-        let ptr_array =
-            unsafe { std::slice::from_raw_parts_mut(self.ptr_array, self.ptr_array_size as usize) };
+        let ptr_array = if let Some(ptr_array) = unsafe { self.ptr_array.as_mut() } {
+            unsafe { std::slice::from_raw_parts_mut(ptr_array, self.ptr_array_size as usize) }
+        } else {
+            &mut []
+        };
 
         let new_array_start;
 
@@ -438,15 +441,15 @@ impl<'a, T: 'a, A: Allocator> Drop for Deque<'a, T, A> {
         }
 
         // free the sub-arrays
-        for subarray in unsafe {
-            std::slice::from_raw_parts_mut(
-                self.begin_it.current_array,
-                self.end_it
-                    .current_array
-                    .offset_from(self.begin_it.current_array) as usize,
-            )
-        } {
-            self.free_subarray(*subarray);
+        if let Some(current_array) = unsafe { self.begin_it.current_array.as_mut() } {
+            for subarray in unsafe {
+                std::slice::from_raw_parts_mut(
+                    current_array,
+                    self.end_it.current_array.offset_from(current_array) as usize,
+                )
+            } {
+                self.free_subarray(*subarray);
+            }
         }
 
         self.free_ptr_array();
