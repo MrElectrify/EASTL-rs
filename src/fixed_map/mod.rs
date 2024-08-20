@@ -6,14 +6,11 @@ use crate::allocator::{Allocator, DefaultAllocator};
 use crate::compare::{Compare, Less};
 use crate::fixed_pool::with_overflow::FixedPoolWithOverflow;
 use crate::fixed_pool::{FixedPool, PoolAllocator};
-use crate::internal::rb_tree::{
-    iter::{Iter, IterMut},
-    node::Node,
-};
+use crate::internal::rb_tree::node::Node;
 use crate::map::Map;
-use duplicate::duplicate_item;
 use moveit::{new, New};
 use std::mem::MaybeUninit;
+use std::ops::{Deref, DerefMut};
 use std::{mem, slice};
 
 /// A fixed map with overflow which uses the default allocator as an overflow.
@@ -82,73 +79,30 @@ impl<
     }
 }
 
-impl<K: PartialEq, V, const NODE_COUNT: usize, A: Allocator, C: Compare<K>>
-    FixedMapImpl<K, V, NODE_COUNT, A, C>
+impl<
+        K: PartialEq,
+        V,
+        const NODE_COUNT: usize,
+        A: PoolAllocator + Default,
+        C: Compare<K> + Default,
+    > Deref for FixedMapImpl<K, V, NODE_COUNT, A, C>
 {
-    /// Clears the map, removing all key-value pairs
-    pub fn clear(&mut self) {
-        self.base_map.clear()
-    }
+    type Target = Map<K, V, A, C>;
 
-    /// Returns true if the map contains a pair indexed
-    /// by the given key
-    ///
-    /// # Arguments
-    ///
-    /// `key`: The key to index the pair
-    pub fn contains_key(&self, key: &K) -> bool {
-        self.base_map.contains_key(key)
+    fn deref(&self) -> &Self::Target {
+        &self.base_map
     }
+}
 
-    /// Fetches the value indexed by the key in the map
-    ///
-    /// # Arguments
-    ///
-    /// `key`: The key to index the pair
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.base_map.get(key)
-    }
-
-    /// Fetches the value indexed by the key in the map
-    ///
-    /// # Arguments
-    ///
-    /// `key`: The key to index the pair
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        self.base_map.get_mut(key)
-    }
-
-    /// Returns true if the map contains no elements
-    pub fn is_empty(&self) -> bool {
-        self.base_map.is_empty()
-    }
-
-    /// Returns an iterator over the elements in the map.
-    ///
-    /// # Safety
-    /// This iterator is not tested as trees are only partially implemented.
-    #[duplicate_item(
-    iter        Self        Iter;
-    [iter]      [&Self]     [Iter];
-    [iter_mut]  [&mut Self] [IterMut];
-    )]
-    #[allow(clippy::needless_arbitrary_self_type)]
-    pub unsafe fn iter(self: Self) -> Iter<K, V> {
-        self.base_map.iter()
-    }
-
-    /// Returns the number of elements in the map
-    pub fn len(&self) -> usize {
-        self.base_map.len()
-    }
-
-    /// Removes a key-value pair from the map,
-    /// returning the pair if it was found
-    ///
-    /// # Arguments
-    ///
-    /// `key`: The key to index the pair
-    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
-        self.base_map.remove_entry(key)
+impl<
+        K: PartialEq,
+        V,
+        const NODE_COUNT: usize,
+        A: PoolAllocator + Default,
+        C: Compare<K> + Default,
+    > DerefMut for FixedMapImpl<K, V, NODE_COUNT, A, C>
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.base_map
     }
 }

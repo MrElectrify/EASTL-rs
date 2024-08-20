@@ -12,6 +12,7 @@ use crate::list::List;
 use moveit::{new, New};
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
+use std::ops::{Deref, DerefMut};
 use std::{fmt, mem, slice};
 
 /// A fixed list which uses the default allocator as an overflow.
@@ -64,94 +65,6 @@ impl<T, const NODE_COUNT: usize, OverflowAllocator: Allocator>
             ));
         })
     }
-
-    /// Get a reference to the last value, if any
-    ///
-    /// # Return
-    /// A reference to the last value if present, `None` if the list is empty.
-    pub fn back(&self) -> Option<&T> {
-        self.base_list.back()
-    }
-
-    /// Get a mutable reference to the last value, if any
-    ///
-    /// # Return
-    /// A mutable reference to the last value if present, `None` if the list is empty.
-    pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.base_list.back_mut()
-    }
-
-    /// Remove all elements from this list
-    pub fn clear(&mut self) {
-        self.base_list.clear()
-    }
-
-    /// Returns the number of occupied elements in the list.
-    pub fn len(&self) -> usize {
-        self.size()
-    }
-
-    /// If the list is empty or not
-    pub fn is_empty(&self) -> bool {
-        self.base_list.empty()
-    }
-
-    /// Get a reference to the first value, if any
-    ///
-    /// # Return
-    /// A reference to the first value if present, `None` if the list is empty.
-    pub fn front(&self) -> Option<&T> {
-        self.base_list.front()
-    }
-
-    /// Get a mutable reference to the first value, if any
-    ///
-    /// # Return
-    /// A mutable reference to the first value if present, `None` if the list is empty.
-    pub fn front_mut(&mut self) -> Option<&mut T> {
-        self.base_list.front_mut()
-    }
-
-    /// Return a forward iterator for this list
-    pub fn iter(&self) -> crate::list::iter::Iter<'_, T> {
-        self.base_list.iter()
-    }
-
-    /// Return a mutable forward iterator for this list
-    pub fn iter_mut(&self) -> crate::list::iter::IterMut<'_, T> {
-        self.base_list.iter_mut()
-    }
-
-    /// Removes the last element in the list, returning its value
-    ///
-    /// # Return
-    /// The last value if present, `None` if the list is empty.
-    pub fn pop_back(&mut self) -> Option<T> {
-        self.base_list.pop_back()
-    }
-
-    /// Removes the first element in the list, returning its value
-    ///
-    /// # Return
-    /// The first value if present, `None` if the list is empty.
-    pub fn pop_front(&mut self) -> Option<T> {
-        self.base_list.pop_front()
-    }
-
-    /// Push a value to the back of the list
-    pub fn push_back(&mut self, value: T) {
-        self.base_list.push_back(value)
-    }
-
-    /// Push a value to the front of the list
-    pub fn push_front(&mut self, value: T) {
-        self.base_list.push_front(value)
-    }
-
-    /// Get the list's size
-    pub fn size(&self) -> usize {
-        self.base_list.size()
-    }
 }
 
 #[allow(private_bounds)]
@@ -172,6 +85,24 @@ impl<T: fmt::Debug, const NODE_COUNT: usize, OverflowAllocator: Allocator> fmt::
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.base_list.fmt(f)
+    }
+}
+
+impl<T, const NODE_COUNT: usize, OverflowAllocator: Allocator + Default> Deref
+    for FixedList<T, NODE_COUNT, OverflowAllocator>
+{
+    type Target = List<T, FixedPoolWithOverflow<ListNode<T>, OverflowAllocator>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.base_list
+    }
+}
+
+impl<T, const NODE_COUNT: usize, OverflowAllocator: Allocator + Default> DerefMut
+    for FixedList<T, NODE_COUNT, OverflowAllocator>
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.base_list
     }
 }
 

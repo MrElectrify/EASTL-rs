@@ -33,7 +33,7 @@ impl ListNodeBase {
 }
 
 #[repr(C)]
-pub(crate) struct ListNode<T> {
+pub struct ListNode<T> {
     pub(crate) base: ListNodeBase,
     pub(crate) value: T,
 }

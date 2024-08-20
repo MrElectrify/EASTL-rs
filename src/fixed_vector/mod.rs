@@ -6,7 +6,7 @@ use moveit::{new, MoveNew, MoveRef};
 use std::ffi::c_void;
 use std::fmt::Debug;
 use std::mem::{size_of, MaybeUninit};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::ptr::null_mut;
 use std::{mem, ptr};
@@ -91,67 +91,14 @@ unsafe impl<T: Sized, const NODE_COUNT: usize, A: Allocator> MoveNew
 }
 
 impl<T: Sized, const NODE_COUNT: usize, A: Allocator> FixedVector<T, NODE_COUNT, A> {
-    /// Returns the vector as raw bytes
-    pub fn as_slice(&self) -> &[T] {
-        self.base_vec.as_slice()
-    }
-
-    pub fn as_slice_mut(&mut self) -> &mut [T] {
-        self.base_vec.as_slice_mut()
-    }
-
     /// Returns the max fixed size, which is the user-supplied NodeCount parameter
     pub fn max_size(&self) -> usize {
         NODE_COUNT
     }
 
-    /// Returns true if the vector is empty
-    pub fn is_empty(&self) -> bool {
-        self.base_vec.is_empty()
-    }
-
-    /// Returns the length of the vector
-    pub fn len(&self) -> usize {
-        self.base_vec.len()
-    }
-
-    /// Returns true if the fixed space has been fully allocated. Note that if overflow is enabled, the container size can be greater than nodeCount but full() could return true because the fixed space may have a recently freed slot.
-    pub fn is_full(&self) -> bool {
-        // If len >= capacity (NodeCount), then we are definitely full.
-        // Also, if our size is smaller but we've switched away from self.buffer due to a previous overflow, then we are considered full.
-        self.base_vec.len() >= NODE_COUNT
-            || self.base_vec.begin_ptr.cast_const() != self.buffer[0].as_ptr()
-    }
-
     /// Returns true if the allocations spilled over into the overflow allocator. Meaningful only if overflow is enabled.
     pub fn has_overflowed(&self) -> bool {
         !ptr::eq(self.base_vec.begin_ptr, self.buffer[0].as_ptr())
-    }
-
-    /// Pushes a new element into the vector
-    ///
-    /// # Arguments
-    ///
-    /// `elem`: The new element
-    pub fn push(&mut self, elem: T) {
-        self.base_vec.push(elem)
-    }
-
-    /// Pops an element off of the back of the array
-    pub fn pop(&mut self) -> Option<T> {
-        self.base_vec.pop()
-    }
-
-    /// Inserts an element into the array at an index.
-    /// `index` must be less than or equal to `size`
-    ///
-    /// # Arguments
-    ///
-    /// `index`: The index to insert the element
-    ///
-    /// `elem`: The element to add to the array
-    pub fn insert(&mut self, index: usize, elem: T) {
-        self.base_vec.insert(index, elem)
     }
 }
 
@@ -172,10 +119,18 @@ impl<T: Sized + Debug, const NODE_COUNT: usize, A: Allocator> Debug
 impl<T: Sized + Debug, const NODE_COUNT: usize, A: Allocator> Deref
     for FixedVector<T, NODE_COUNT, A>
 {
-    type Target = [T];
+    type Target = Vector<T, FixedVectorAllocator<A>>;
 
     fn deref(&self) -> &Self::Target {
-        self.as_slice()
+        &self.base_vec
+    }
+}
+
+impl<T: Sized + Debug, const NODE_COUNT: usize, A: Allocator> DerefMut
+    for FixedVector<T, NODE_COUNT, A>
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.base_vec
     }
 }
 
@@ -213,7 +168,6 @@ mod test {
         }
         assert_eq!(v.len(), 12);
         assert!(v.has_overflowed());
-        assert!(v.is_full());
         assert_eq!(v.as_slice()[11], 11);
     }
 
@@ -257,7 +211,6 @@ mod test {
         let target = unsafe { target.assume_init_ref() };
         assert_eq!(target.len(), 12);
         assert!(target.has_overflowed());
-        assert!(target.is_full());
         assert_eq!(target.as_slice()[11], 11);
     }
 }

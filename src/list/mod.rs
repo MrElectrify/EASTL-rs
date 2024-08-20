@@ -129,6 +129,16 @@ impl<T, A: Allocator> List<T, A> {
         IterMut::new(&self.node, self.size())
     }
 
+    /// Returns true if the list contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the length of the list, in elements.
+    pub fn len(&self) -> u32 {
+        self.size
+    }
+
     /// Removes the last element in the list, returning its value
     ///
     /// # Return

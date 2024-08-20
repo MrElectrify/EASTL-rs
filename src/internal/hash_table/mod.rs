@@ -167,7 +167,9 @@ impl<K: PartialEq, V, A: Allocator, H: Hash<K>, E: Equals<K>> HashTable<K, V, A,
     pub unsafe fn new_in(allocator: A) -> Self {
         Self {
             _pad: 0,
-            bucket_array: unsafe { std::mem::transmute(EMPTY_BUCKET_ARR.as_ptr()) },
+            bucket_array: unsafe {
+                std::mem::transmute::<*const usize, *mut *mut Node<K, V>>(EMPTY_BUCKET_ARR.as_ptr())
+            },
             bucket_count: 1,
             element_count: 0,
             rehash_policy: PrimeRehashPolicy::default(),

@@ -67,7 +67,7 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
         if let Some(begin_ptr) = unsafe { self.begin_ptr.as_ref() } {
             unsafe { std::slice::from_raw_parts(begin_ptr, self.len()) }
         } else {
-            &mut []
+            &[]
         }
     }
 

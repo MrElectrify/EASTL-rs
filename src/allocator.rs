@@ -46,7 +46,7 @@ pub unsafe trait Allocator {
     /// `p` must be a valid pointer to an array with size `n`.
     unsafe fn deallocate<T>(&mut self, p: *mut T, n: usize) {
         self.deallocate_raw_aligned(
-            std::mem::transmute(p),
+            std::mem::transmute::<*mut T, *mut ()>(p),
             n * std::mem::size_of::<T>(),
             std::mem::align_of::<T>(),
         )
@@ -104,7 +104,7 @@ unsafe impl Allocator for DefaultAllocator {
 
     unsafe fn deallocate_raw_aligned(&mut self, p: *mut (), n: usize, align: usize) {
         alloc::dealloc(
-            std::mem::transmute(p),
+            std::mem::transmute::<*mut (), *mut u8>(p),
             Layout::array::<u8>(n).unwrap().align_to(align).unwrap(),
         )
     }
