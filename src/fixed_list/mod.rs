@@ -1,7 +1,3 @@
-//!
-//! Copyright (C) Warsaw Revamped. Any unauthorized use, modification, or distribution of any portion of this file is prohibited. All rights reserved.
-//!
-
 #[cfg(feature = "nightly")]
 pub mod conformant;
 

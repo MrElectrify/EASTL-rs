@@ -21,7 +21,7 @@ dependencies = [
 
 [[package]]
 name = "eastl-rs"
-version = "0.16.0"
+version = "0.16.1"
 dependencies = [
  "duplicate",
  "itertools",

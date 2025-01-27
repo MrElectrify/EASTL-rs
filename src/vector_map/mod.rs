@@ -1,9 +1,10 @@
 mod entry;
 
+pub use entry::{Entry, OccupiedEntry, VacantEntry};
+
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::compare::{Compare, Less};
 use crate::vector::Vector;
-use crate::vector_map::entry::{Entry, OccupiedEntry, VacantEntry};
 use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;

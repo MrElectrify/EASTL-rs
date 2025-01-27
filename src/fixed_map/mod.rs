@@ -1,7 +1,3 @@
-//!
-//! Copyright (C) Warsaw Revamped. Any unauthorized use, modification, or distribution of any portion of this file is prohibited. All rights reserved.
-//!
-
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::compare::{Compare, Less};
 use crate::fixed_pool::with_overflow::FixedPoolWithOverflow;

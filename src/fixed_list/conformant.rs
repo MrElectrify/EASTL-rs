@@ -1,9 +1,6 @@
-//!
-//! Copyright (C) Warsaw Revamped. Any unauthorized use, modification, or distribution of any portion of this file is prohibited. All rights reserved.
-//!
-
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::fixed_pool::with_overflow::FixedPoolWithOverflow;
+use crate::fixed_pool::PoolAllocator;
 use crate::list::node::{ListNode, ListNodeBase};
 use crate::list::List;
 use moveit::{new, New};
