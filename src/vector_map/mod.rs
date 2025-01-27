@@ -1,6 +1,9 @@
+mod entry;
+
 use crate::allocator::{Allocator, DefaultAllocator};
 use crate::compare::{Compare, Less};
 use crate::vector::Vector;
+use crate::vector_map::entry::{Entry, OccupiedEntry, VacantEntry};
 use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
@@ -56,6 +59,24 @@ impl<K: PartialEq, V, A: Allocator, C: Compare<K> + Default> VectorMap<K, V, A, 
     /// `key`: The key to search for
     pub fn contains_key(&self, key: &K) -> bool {
         self.get(key).is_some()
+    }
+
+    /// Finds the entry in the map. Otherwise, returns an entry that can be used to insert the
+    /// key-value pair without another lookup.
+    pub fn entry(&mut self, key: K) -> Entry<K, V, A, C> {
+        // find the insertion point
+        let lower_bound = self.lower_bound(&key);
+
+        // if it already exists, just replace the value and return the original
+        if lower_bound < self.len() && self.base[lower_bound].0 == key {
+            Entry::Occupied(OccupiedEntry(&mut self.base[lower_bound]))
+        } else {
+            Entry::Vacant(VacantEntry {
+                vec: self,
+                key,
+                lower_bound,
+            })
+        }
     }
 
     /// Fetches the associated value for a key
@@ -283,6 +304,7 @@ unsafe impl<K: PartialEq + Sync, V: Sync, A: Allocator + Sync, C: Compare<K> + S
 
 #[cfg(test)]
 mod test {
+    use crate::vector_map::entry::Entry;
     use crate::vector_map::DefaultVectorMap;
 
     #[test]
@@ -376,6 +398,43 @@ mod test {
         assert!(!vec.is_empty());
         assert_eq!(vec.len(), 2);
         assert_eq!(&*vec, &[(4, 5), (5, 6)]);
+    }
+
+    #[test]
+    fn entry_occupied() {
+        let mut vec = DefaultVectorMap::default();
+
+        vec.insert(5, 6);
+        let Entry::Occupied(mut entry) = vec.entry(5) else {
+            panic!("Expected occupied entry");
+        };
+
+        assert_eq!(entry.key(), &5);
+        assert_eq!(entry.get(), &6);
+
+        // modify the entry
+        *entry.get_mut() = 7;
+
+        assert_eq!(entry.get(), &7);
+        assert_eq!(vec.get(&5), Some(&7));
+    }
+
+    #[test]
+    fn entry_vacant() {
+        let mut vec = DefaultVectorMap::default();
+
+        let Entry::Vacant(entry) = vec.entry(5) else {
+            panic!("Expected occupied entry");
+        };
+
+        assert_eq!(entry.key(), &5);
+
+        // insert the entry
+        let val = entry.insert(7);
+        assert_eq!(val, &7);
+
+        assert_eq!(vec.get(&5), Some(&7));
+        assert_eq!(vec.len(), 1);
     }
 
     #[test]
