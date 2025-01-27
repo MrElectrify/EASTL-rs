@@ -36,17 +36,23 @@ pub struct Less<T> {
     _marker: PhantomData<T>,
 }
 
+impl<T: PartialOrd> Less<T> {
+    pub const fn new() -> Self {
+        Self {
+            _pad: 0,
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<T: PartialOrd> Compare<T> for Less<T> {
     fn compare(left: &T, right: &T) -> bool {
         left < right
     }
 }
 
-impl<T> Default for Less<T> {
+impl<T: PartialOrd> Default for Less<T> {
     fn default() -> Self {
-        Self {
-            _pad: 0,
-            _marker: PhantomData,
-        }
+        Self::new()
     }
 }

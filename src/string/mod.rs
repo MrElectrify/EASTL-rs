@@ -51,11 +51,7 @@ impl<A: Allocator> String<A> {
     /// `s`: The string slice
     ///
     /// `allocator`: The allocator used to allocate and de-allocate elements
-    ///
-    /// # Safety
-    ///
-    /// The allocator specified must safely allocate ande de-allocate valid memory
-    pub unsafe fn from_in<S: AsRef<str>>(s: S, allocator: A) -> Self {
+    pub fn from_in<S: AsRef<str>>(s: S, allocator: A) -> Self {
         let mut ret = Self {
             vec: Vector::new_in(NullTerminatorAllocator(allocator)),
         };
@@ -69,11 +65,7 @@ impl<A: Allocator> String<A> {
     /// # Arguments
     ///
     /// `allocator`: The allocator used to allocate and de-allocate elements
-    ///
-    /// # Safety
-    ///
-    /// The allocator specified must safely allocate ande de-allocate valid memory
-    pub unsafe fn new_in(allocator: A) -> Self {
+    pub const fn new_in(allocator: A) -> Self {
         Self {
             vec: Vector::new_in(NullTerminatorAllocator(allocator)),
         }
@@ -253,7 +245,7 @@ impl<A: Allocator> Eq for String<A> {}
 
 impl<A: Allocator + Default> From<&str> for String<A> {
     fn from(s: &str) -> Self {
-        unsafe { Self::from_in(s, A::default()) }
+        Self::from_in(s, A::default())
     }
 }
 

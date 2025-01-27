@@ -27,7 +27,7 @@ pub struct Vector<T: Sized, A: Allocator> {
 impl<T: Sized, A: Allocator + Default> Vector<T, A> {
     /// Creates a new vector
     pub fn new() -> Self {
-        unsafe { Self::new_in(A::default()) }
+        Self::new_in(A::default())
     }
 
     /// Creates a new vector with a capacity allocated
@@ -48,11 +48,7 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
     /// # Arguments
     ///
     /// `allocator`: The allocator used to allocate and de-allocate elements
-    ///
-    /// # Safety
-    ///
-    /// The allocator specified must safely allocate ande de-allocate valid memory
-    pub unsafe fn new_in(allocator: A) -> Self {
+    pub const fn new_in(allocator: A) -> Self {
         Self {
             begin_ptr: std::ptr::null_mut(),
             end_ptr: std::ptr::null_mut(),
@@ -335,7 +331,7 @@ where
 
 impl<T, A: Allocator + Default> Default for Vector<T, A> {
     fn default() -> Self {
-        unsafe { Vector::new_in(A::default()) }
+        Vector::new_in(A::default())
     }
 }
 

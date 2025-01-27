@@ -20,13 +20,22 @@ pub struct VectorMap<K: PartialEq, V, A: Allocator, C: Compare<K> = Less<K>> {
     _compare: C,
 }
 
-impl<K: PartialEq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Less<K>> {
+impl<K: PartialEq + PartialOrd, V, A: Allocator, C: Compare<K>> VectorMap<K, V, A, C> {
+    /// Creates a new `VectorMap` in an allocator.
+    pub const fn new_in(allocator: A, compare: C) -> Self {
+        Self {
+            base: Vector::new_in(allocator),
+            _compare: compare,
+        }
+    }
+}
+
+impl<K: PartialEq + PartialOrd, V, A: Allocator + Default, C: Compare<K> + Default>
+    VectorMap<K, V, A, C>
+{
     /// Creates a new empty vector map
     pub fn new() -> Self {
-        Self {
-            base: Vector::new(),
-            _compare: Less::default(),
-        }
+        Self::new_in(A::default(), C::default())
     }
 
     /// Creates a new vector map with a capacity allocated
@@ -37,7 +46,7 @@ impl<K: PartialEq + PartialOrd, V, A: Allocator + Default> VectorMap<K, V, A, Le
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             base: Vector::with_capacity(capacity),
-            _compare: Less::default(),
+            _compare: C::default(),
         }
     }
 }
@@ -156,22 +165,6 @@ impl<K: PartialEq, V, A: Allocator, C: Compare<K> + Default> VectorMap<K, V, A, 
     /// Returns the number of key-value pairs in the hash map
     pub fn len(&self) -> usize {
         self.base.len()
-    }
-
-    /// Creates a hash map backed by an allocator
-    ///
-    /// # Arguments
-    ///
-    /// `allocator`: The allocator to use to allocate and de-allocate memory
-    ///
-    /// # Safety
-    ///
-    /// The allocator must safely allocate and de-allocate valid memory
-    pub unsafe fn new_in(allocator: A) -> Self {
-        Self {
-            base: Vector::new_in(allocator),
-            _compare: C::default(),
-        }
     }
 
     /// Removes a key-value pair from the hash map,
