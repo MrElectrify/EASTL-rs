@@ -86,9 +86,16 @@ pub unsafe trait Allocator {
 }
 
 #[derive(Default)]
+#[repr(C)]
 pub struct DefaultAllocator {
     // padding due to 1-size struct in C
     _dummy: u8,
+}
+
+impl DefaultAllocator {
+    pub const fn new() -> Self {
+        Self { _dummy: 0 }
+    }
 }
 
 unsafe impl Allocator for DefaultAllocator {
