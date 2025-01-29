@@ -1,10 +1,15 @@
+mod into_iter;
+
 use std::{
     fmt::Debug,
     marker::PhantomData,
+    mem,
     ops::{Deref, DerefMut},
+    ptr,
 };
 
 use crate::allocator::{Allocator, DefaultAllocator};
+use crate::vector::into_iter::IntoIter;
 
 /// Vector with the default allocator.
 pub type DefaultVector<V> = Vector<V, DefaultAllocator>;
@@ -87,7 +92,8 @@ impl<T: Sized, A: Allocator> Vector<T, A> {
                 // drop all elements in place
                 std::ptr::drop_in_place(self.as_slice_mut());
                 // free the array
-                self.allocator.deallocate::<T>(self.begin_ptr, self.len())
+                self.allocator
+                    .deallocate::<T>(self.begin_ptr, self.capacity())
             }
         }
 
@@ -395,6 +401,28 @@ impl<T, A: Allocator + Default> FromIterator<T> for Vector<T, A> {
     }
 }
 
+impl<T: Sized, A: Allocator> IntoIterator for Vector<T, A> {
+    type Item = T;
+    type IntoIter = IntoIter<T, A>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // extract the allocator
+        let allocator = unsafe { ptr::read(&self.allocator) };
+        let it = IntoIter {
+            begin_ptr: self.begin_ptr,
+            front_cursor: self.begin_ptr,
+            back_cursor: self.end_ptr,
+            capacity_ptr: self.capacity_ptr,
+            allocator,
+        };
+
+        // forget ourselves so we dont drop
+        mem::forget(self);
+
+        it
+    }
+}
+
 unsafe impl<T: Send, A: Allocator + Send> Send for Vector<T, A> {}
 unsafe impl<T: Sync, A: Allocator + Sync> Sync for Vector<T, A> {}
 
@@ -511,6 +539,39 @@ mod test {
         v.push(4);
         assert_eq!(v.remove(2), Some(3));
         assert_eq!(&*v, &[1, 2, 4]);
+    }
+
+    #[test]
+    fn into_iter() {
+        let mut v = DefaultVector::new();
+        v.push(1);
+        v.push(2);
+        v.push(3);
+        let capacity = v.capacity();
+
+        let mut it = v.into_iter();
+
+        // assert beginning state
+        assert_eq!(it.capacity(), capacity);
+        assert_eq!(it.len(), 3);
+        assert!(!it.is_empty());
+
+        // remove from front and back
+        assert_eq!(it.next(), Some(1));
+        assert_eq!(it.next_back(), Some(3));
+
+        // assert current state
+        assert_eq!(it.capacity(), capacity);
+        assert_eq!(it.len(), 1);
+        assert!(!it.is_empty());
+
+        // remove the last element
+        assert_eq!(it.next(), Some(2));
+
+        // make sure we're empty
+        assert!(it.is_empty());
+        assert_eq!(it.len(), 0);
+        assert_eq!(it.next(), None);
     }
 
     #[test]
