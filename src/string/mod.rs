@@ -20,6 +20,7 @@ pub type DefaultString = String<DefaultAllocator>;
 
 /// `String` is what it sounds like, a string of characters.
 /// It's actually implemented internally as a vector
+#[repr(C)]
 pub struct String<A: Allocator> {
     vec: Vector<u8, NullTerminatorAllocator<A>>,
 }
