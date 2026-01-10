@@ -1,5 +1,6 @@
 use crate::allocator::Allocator;
 
+#[repr(C)]
 pub(crate) struct NullTerminatorAllocator<A: Allocator>(pub(crate) A);
 
 unsafe impl<A: Allocator> Allocator for NullTerminatorAllocator<A> {
